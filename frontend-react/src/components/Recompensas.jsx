@@ -1,44 +1,90 @@
-import Navbar from './Navbar';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Navbar from './Navbar';
 
 function Recompensas() {
+  const [monedas, setMonedas] = useState(350);
+  const [mensaje, setMensaje] = useState('');
+
+  useEffect(() => {
+    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
+    setMonedas(monedasGuardadas);
+  }, []);
+
+  const canjearRecompensa = (nombre, costo) => {
+    if (monedas >= costo) {
+      const nuevasMonedas = monedas - costo;
+      setMonedas(nuevasMonedas);
+      localStorage.setItem('monedas', nuevasMonedas);
+      setMensaje(`Has canjeado: ${nombre}.`);
+    } else {
+      setMensaje('No tienes suficientes monedas para esta recompensa.');
+    }
+  };
+
+  const recompensas = [
+    {
+      nombre: 'Pista',
+      descripcion: 'Recibe una ayuda durante una pregunta difícil.',
+      costo: 50,
+      icono: '💡'
+    },
+    {
+      nombre: 'Eliminar respuesta incorrecta',
+      descripcion: 'Elimina una opción incorrecta en preguntas de selección múltiple.',
+      costo: 100,
+      icono: '❌'
+    },
+    {
+      nombre: 'Reintento',
+      descripcion: 'Permite volver a responder una pregunta fallida.',
+      costo: 150,
+      icono: '🔁'
+    }
+  ];
+
   return (
     <div className="page">
       <Navbar />
-      <header>
-        <h1>StudyQuest - Recompensas</h1>
-      </header>
 
-      <main className="dashboard-container">
-        <div className="card">
-          <h2>Monedas disponibles</h2>
-          <p>350 monedas</p>
-        </div>
+      <main className="main-content">
+        <section className="store-header">
+          <div>
+            <h1>Tienda de recompensas</h1>
+            <p>Canjea tus monedas por ayudas académicas.</p>
+          </div>
 
-        <div className="card">
-          <h2>Pista</h2>
-          <p>Recibe una ayuda durante una pregunta difícil.</p>
-          <p><strong>Costo:</strong> 50 monedas</p>
-          <button>Canjear</button>
-        </div>
+          <div className="coin-box">
+            <span>Monedas disponibles</span>
+            <strong>{monedas}</strong>
+          </div>
+        </section>
 
-        <div className="card">
-          <h2>Eliminar respuesta incorrecta</h2>
-          <p>Elimina una opción incorrecta en preguntas de selección múltiple.</p>
-          <p><strong>Costo:</strong> 100 monedas</p>
-          <button>Canjear</button>
-        </div>
+        {mensaje && <div className="store-message">{mensaje}</div>}
 
-        <div className="card">
-          <h2>Reintento</h2>
-          <p>Permite volver a responder una pregunta fallida.</p>
-          <p><strong>Costo:</strong> 150 monedas</p>
-          <button>Canjear</button>
-        </div>
+        <section className="rewards-grid">
+          {recompensas.map((recompensa) => (
+            <div className="reward-card" key={recompensa.nombre}>
+              <div className="reward-icon">{recompensa.icono}</div>
 
-        <div className="card">
-          <Link to="/dashboard"><button>Volver al Dashboard</button></Link>
-        </div>
+              <h2>{recompensa.nombre}</h2>
+              <p>{recompensa.descripcion}</p>
+
+              <div className="reward-price">
+                <span>Costo</span>
+                <strong>{recompensa.costo} monedas</strong>
+              </div>
+
+              <button onClick={() => canjearRecompensa(recompensa.nombre, recompensa.costo)}>
+                Canjear recompensa
+              </button>
+            </div>
+          ))}
+        </section>
+
+        <Link to="/dashboard">
+          <button className="back-button">Volver al Dashboard</button>
+        </Link>
       </main>
     </div>
   );
