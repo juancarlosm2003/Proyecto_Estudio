@@ -126,3 +126,42 @@ label {
   display: block;
   margin: 12px 0;
 }
+.sidebar {
+  width: 230px;
+  min-height: 100vh;
+  background: #111827;
+  color: white;
+  padding: 25px 20px;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.sidebar h2 {
+  margin-bottom: 30px;
+  color: #ffffff;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.sidebar a {
+  color: #d1d5db;
+  text-decoration: none;
+  font-size: 15px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.sidebar a:hover {
+  background: #374151;
+  color: white;
+}
+
+.page header,
+.page main {
+  margin-left: 230px;
+}

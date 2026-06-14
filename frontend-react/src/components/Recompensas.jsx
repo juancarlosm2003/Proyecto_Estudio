@@ -1,8 +1,10 @@
+import Navbar from './Navbar';
 import { Link } from 'react-router-dom';
 
 function Recompensas() {
   return (
     <div className="page">
+      <Navbar />
       <header>
         <h1>StudyQuest - Recompensas</h1>
       </header>

@@ -1,8 +1,10 @@
+import Navbar from './Navbar';
 import { Link } from 'react-router-dom';
 
 function Dashboard() {
   return (
     <div className="page">
+      <Navbar />
       <header>
         <h1>StudyQuest</h1>
         <p>Panel principal del estudiante</p>
