@@ -14,85 +14,135 @@ function Dashboard() {
     setMonedas(monedasGuardadas);
   }, []);
 
+  const xpPorNivel = 500;
+  const nivel = Math.floor(xp / xpPorNivel) + 1;
+  const progresoNivel = xp % xpPorNivel;
+  const porcentajeProgreso = Math.round((progresoNivel / xpPorNivel) * 100);
+  const xpRestante = xpPorNivel - progresoNivel;
+
+  const progresoStyle = {
+    width: porcentajeProgreso + '%',
+  };
+
+  const stats = [
+    {
+      titulo: 'Experiencia',
+      valor: xp + ' XP',
+      descripcion: 'Progreso acumulado',
+      icono: '⚡',
+    },
+    {
+      titulo: 'Monedas',
+      valor: monedas,
+      descripcion: 'Disponibles para recompensas',
+      icono: '🪙',
+    },
+    {
+      titulo: 'Racha',
+      valor: '7 días',
+      descripcion: 'Estudio constante',
+      icono: '🔥',
+    },
+    {
+      titulo: 'Nivel',
+      valor: nivel,
+      descripcion: 'Nivel actual',
+      icono: '🏆',
+    },
+  ];
+
+  const actividades = [
+    {
+      titulo: 'Quiz',
+      descripcion: 'Responde preguntas y gana XP según tu resultado.',
+      icono: '📝',
+      ruta: '/quiz',
+    },
+    {
+      titulo: 'Sesión de estudio',
+      descripcion: 'Completa una sesión guiada para mantener tu racha.',
+      icono: '📚',
+      ruta: '/sesion-estudio',
+    },
+    {
+      titulo: 'Recompensas',
+      descripcion: 'Canjea tus monedas por pistas, reintentos y ayudas.',
+      icono: '🎁',
+      ruta: '/recompensas',
+    },
+    {
+      titulo: 'Progreso',
+      descripcion: 'Consulta tus insignias, actividades y rendimiento.',
+      icono: '📈',
+      ruta: '/progreso',
+    },
+  ];
+
   return (
     <div className="page">
       <Navbar />
 
       <main className="main-content">
-        <section className="welcome-section">
+        <section className="hero-card">
           <div>
+            <span className="eyebrow">Panel principal</span>
             <h1>Hola, estudiante 👋</h1>
-            <p>Continúa aprendiendo, completa actividades y gana recompensas.</p>
+            <p>
+              Continúa aprendiendo, completa actividades y desbloquea recompensas.
+            </p>
           </div>
 
-          <Link to="/quiz">
-            <button className="primary-action">Iniciar actividad</button>
+          <Link to="/quiz" className="primary-action">
+            Iniciar actividad
           </Link>
         </section>
 
         <section className="stats-grid">
-          <div className="stat-card">
-            <span>Experiencia</span>
-            <h2>{xp} XP</h2>
-            <p>Progreso acumulado</p>
-          </div>
-
-          <div className="stat-card">
-            <span>Monedas</span>
-            <h2>{monedas}</h2>
-            <p>Disponibles para recompensas</p>
-          </div>
-
-          <div className="stat-card">
-            <span>Racha</span>
-            <h2>7 días</h2>
-            <p>Estudio constante</p>
-          </div>
-
-          <div className="stat-card">
-            <span>Nivel</span>
-            <h2>5</h2>
-            <p>Estudiante avanzado</p>
-          </div>
+          {stats.map((stat) => (
+            <article className="stat-card" key={stat.titulo}>
+              <div className="stat-icon">{stat.icono}</div>
+              <span>{stat.titulo}</span>
+              <h2>{stat.valor}</h2>
+              <p>{stat.descripcion}</p>
+            </article>
+          ))}
         </section>
 
         <section className="progress-section">
           <div className="section-title">
-            <h2>Progreso del nivel</h2>
-            <p>Te faltan 700 XP para subir al siguiente nivel.</p>
+            <div>
+              <h2>Progreso del nivel</h2>
+              <p>Te faltan {xpRestante} XP para subir al siguiente nivel.</p>
+            </div>
+
+            <strong>{porcentajeProgreso}%</strong>
           </div>
 
           <div className="progress-bar">
-            <div className="progress-fill"></div>
+            <div className="progress-fill" style={progresoStyle}></div>
           </div>
         </section>
 
         <section className="activities-section">
           <div className="section-title">
-            <h2>Actividades disponibles</h2>
-            <p>Selecciona una actividad para continuar con tu aprendizaje.</p>
+            <div>
+              <h2>Actividades disponibles</h2>
+              <p>Selecciona una actividad para continuar con tu aprendizaje.</p>
+            </div>
           </div>
 
           <div className="activities-grid">
-            <Link to="/quiz" className="activity-card">
-              <h3>📝 Quiz</h3>
-              <p>Responde preguntas y gana XP según tu resultado.</p>
-            </Link>
-
-            <Link to="/sesion-estudio" className="activity-card">
-              <h3>📚 Sesión de estudio</h3>
-              <p>Completa una sesión guiada para mantener tu racha.</p>
-            </Link>
-
-            <Link to="/recompensas" className="activity-card">
-              <h3>🎁 Recompensas</h3>
-              <p>Canjea tus monedas por pistas, reintentos y ayudas.</p>
-            </Link>
-
-            <Link to="/progreso" className="activity-card">
-              <h3>📈 Progreso</h3>
-              <p>Consulta tus insignias, actividades y rendimiento.</p>
-            </Link>
+            {actividades.map((actividad) => (
+              <Link
+                to={actividad.ruta}
+                className="activity-card"
+                key={actividad.titulo}
+              >
+                <div className="activity-icon">{actividad.icono}</div>
+                <h3>{actividad.titulo}</h3>
+                <p>{actividad.descripcion}</p>
+              </Link>
+            ))}
           </div>
         </section>
       </main>

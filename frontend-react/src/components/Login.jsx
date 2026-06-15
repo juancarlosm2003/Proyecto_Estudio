@@ -16,7 +16,19 @@ function Login() {
       return;
     }
 
+    if (!correo.includes('@')) {
+      setError('Ingresa un correo electrónico válido.');
+      return;
+    }
+
+    if (contrasena.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+
     setError('');
+
+    localStorage.setItem('usuario', correo);
     navigate('/dashboard');
   };
 
@@ -25,7 +37,9 @@ function Login() {
       <div className="login-wrapper">
         <section className="login-info">
           <span className="app-badge">Plataforma educativa</span>
+
           <h1>StudyQuest</h1>
+
           <p>
             Aprende de forma interactiva, completa actividades académicas,
             gana experiencia, monedas e insignias por tu progreso.
@@ -54,16 +68,18 @@ function Login() {
           <p>Accede a tu panel de estudiante</p>
 
           <form onSubmit={iniciarSesion}>
-            <label>Correo electrónico</label>
+            <label htmlFor="correo">Correo electrónico</label>
             <input
+              id="correo"
               type="email"
               placeholder="estudiante@correo.com"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
             />
 
-            <label>Contraseña</label>
+            <label htmlFor="contrasena">Contraseña</label>
             <input
+              id="contrasena"
               type="password"
               placeholder="Ingresa tu contraseña"
               value={contrasena}
@@ -78,7 +94,7 @@ function Login() {
           </form>
 
           <p className="register">
-            ¿No tienes cuenta? <a href="#">Crear cuenta</a>
+            ¿No tienes cuenta? <span>Crear cuenta próximamente</span>
           </p>
         </section>
       </div>

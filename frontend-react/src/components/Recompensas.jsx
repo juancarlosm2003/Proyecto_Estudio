@@ -11,37 +11,42 @@ function Recompensas() {
     setMonedas(monedasGuardadas);
   }, []);
 
-  const canjearRecompensa = (nombre, costo) => {
-    if (monedas >= costo) {
-      const nuevasMonedas = monedas - costo;
-      setMonedas(nuevasMonedas);
-      localStorage.setItem('monedas', nuevasMonedas);
-      setMensaje(`Has canjeado: ${nombre}.`);
-    } else {
-      setMensaje('No tienes suficientes monedas para esta recompensa.');
-    }
-  };
-
   const recompensas = [
     {
       nombre: 'Pista',
       descripcion: 'Recibe una ayuda durante una pregunta difícil.',
       costo: 50,
-      icono: '💡'
+      icono: '💡',
+      tipo: 'Ayuda rápida',
     },
     {
       nombre: 'Eliminar respuesta incorrecta',
       descripcion: 'Elimina una opción incorrecta en preguntas de selección múltiple.',
       costo: 100,
-      icono: '❌'
+      icono: '❌',
+      tipo: 'Ventaja académica',
     },
     {
       nombre: 'Reintento',
       descripcion: 'Permite volver a responder una pregunta fallida.',
       costo: 150,
-      icono: '🔁'
-    }
+      icono: '🔁',
+      tipo: 'Segunda oportunidad',
+    },
   ];
+
+  const canjearRecompensa = (nombre, costo) => {
+    if (monedas < costo) {
+      setMensaje('No tienes suficientes monedas para esta recompensa.');
+      return;
+    }
+
+    const nuevasMonedas = monedas - costo;
+
+    setMonedas(nuevasMonedas);
+    localStorage.setItem('monedas', nuevasMonedas);
+    setMensaje(`Has canjeado: ${nombre}.`);
+  };
 
   return (
     <div className="page">
@@ -50,8 +55,9 @@ function Recompensas() {
       <main className="main-content">
         <section className="store-header">
           <div>
+            <span className="eyebrow">Tienda académica</span>
             <h1>Tienda de recompensas</h1>
-            <p>Canjea tus monedas por ayudas académicas.</p>
+            <p>Canjea tus monedas por ayudas para mejorar tu rendimiento.</p>
           </div>
 
           <div className="coin-box">
@@ -63,27 +69,39 @@ function Recompensas() {
         {mensaje && <div className="store-message">{mensaje}</div>}
 
         <section className="rewards-grid">
-          {recompensas.map((recompensa) => (
-            <div className="reward-card" key={recompensa.nombre}>
-              <div className="reward-icon">{recompensa.icono}</div>
+          {recompensas.map((recompensa) => {
+            const puedeCanjear = monedas >= recompensa.costo;
 
-              <h2>{recompensa.nombre}</h2>
-              <p>{recompensa.descripcion}</p>
+            return (
+              <article className="reward-card" key={recompensa.nombre}>
+                <div className="reward-icon">{recompensa.icono}</div>
 
-              <div className="reward-price">
-                <span>Costo</span>
-                <strong>{recompensa.costo} monedas</strong>
-              </div>
+                <span className="reward-type">{recompensa.tipo}</span>
 
-              <button onClick={() => canjearRecompensa(recompensa.nombre, recompensa.costo)}>
-                Canjear recompensa
-              </button>
-            </div>
-          ))}
+                <h2>{recompensa.nombre}</h2>
+                <p>{recompensa.descripcion}</p>
+
+                <div className="reward-price">
+                  <span>Costo</span>
+                  <strong>{recompensa.costo} monedas</strong>
+                </div>
+
+                <button
+                  className={puedeCanjear ? 'reward-button' : 'reward-button disabled'}
+                  onClick={() =>
+                    canjearRecompensa(recompensa.nombre, recompensa.costo)
+                  }
+                  disabled={!puedeCanjear}
+                >
+                  {puedeCanjear ? 'Canjear recompensa' : 'Monedas insuficientes'}
+                </button>
+              </article>
+            );
+          })}
         </section>
 
-        <Link to="/dashboard">
-          <button className="back-button">Volver al Dashboard</button>
+        <Link to="/dashboard" className="back-button">
+          Volver al Dashboard
         </Link>
       </main>
     </div>
