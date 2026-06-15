@@ -1,35 +1,130 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
+import contenidosEstudio from '../data/contenidosEstudio';
 
 function Quiz() {
-  const preguntas = [
-    {
-      pregunta: '¿Cuál es la capital de Honduras?',
-      opciones: ['San Pedro Sula', 'Tegucigalpa', 'La Ceiba'],
-      correcta: 'Tegucigalpa',
-    },
-    {
-      pregunta: '¿Qué se gana al completar actividades en StudyQuest?',
-      opciones: ['XP y monedas', 'Solo puntos', 'Nada'],
-      correcta: 'XP y monedas',
-    },
-    {
-      pregunta: '¿Para qué sirven las monedas?',
-      opciones: ['Para cerrar sesión', 'Para canjear recompensas', 'Para cambiar el nombre'],
-      correcta: 'Para canjear recompensas',
-    },
-  ];
-
+  const [claseSeleccionada, setClaseSeleccionada] = useState(0);
   const [indicePregunta, setIndicePregunta] = useState(0);
   const [respuesta, setRespuesta] = useState('');
   const [mensaje, setMensaje] = useState('');
+  const [mensajeAyuda, setMensajeAyuda] = useState('');
   const [respondido, setRespondido] = useState(false);
   const [correcta, setCorrecta] = useState(false);
   const [aciertos, setAciertos] = useState(0);
   const [quizFinalizado, setQuizFinalizado] = useState(false);
+  const [inventario, setInventario] = useState([]);
+  const [opcionesEliminadas, setOpcionesEliminadas] = useState([]);
+  const [pistaActiva, setPistaActiva] = useState(false);
+
+  const claseActual = contenidosEstudio[claseSeleccionada];
+
+  const preguntas = claseActual.temas.map((tema) => ({
+    tema: tema.titulo,
+    concepto: tema.concepto,
+    pregunta: tema.pregunta,
+    opciones: tema.opciones,
+    correcta: tema.correcta,
+  }));
 
   const preguntaActual = preguntas[indicePregunta];
+
+  useEffect(() => {
+    const inventarioGuardado =
+      JSON.parse(localStorage.getItem('inventarioRecompensas')) || [];
+
+    setInventario(inventarioGuardado);
+  }, []);
+
+  useEffect(() => {
+    reiniciarQuiz();
+  }, [claseSeleccionada]);
+
+  const obtenerCantidad = (nombre) => {
+    return inventario.filter((item) => item.nombre === nombre).length;
+  };
+
+  const consumirRecompensa = (nombre) => {
+    const index = inventario.findIndex((item) => item.nombre === nombre);
+
+    if (index === -1) {
+      return false;
+    }
+
+    const nuevoInventario = inventario.filter((_, i) => i !== index);
+
+    setInventario(nuevoInventario);
+    localStorage.setItem('inventarioRecompensas', JSON.stringify(nuevoInventario));
+
+    return true;
+  };
+
+  const usarPista = () => {
+    if (pistaActiva) {
+      setMensajeAyuda('Ya usaste una pista en esta pregunta.');
+      return;
+    }
+
+    const usada = consumirRecompensa('Pista');
+
+    if (!usada) {
+      setMensajeAyuda('No tienes pistas disponibles. Puedes comprar una en Recompensas.');
+      return;
+    }
+
+    setPistaActiva(true);
+    setMensajeAyuda(`Pista: ${preguntaActual.concepto}`);
+  };
+
+  const eliminarRespuestaIncorrecta = () => {
+    const incorrectasDisponibles = preguntaActual.opciones.filter(
+      (opcion) =>
+        opcion !== preguntaActual.correcta && !opcionesEliminadas.includes(opcion)
+    );
+
+    if (incorrectasDisponibles.length === 0) {
+      setMensajeAyuda('Ya no hay respuestas incorrectas para eliminar.');
+      return;
+    }
+
+    const usada = consumirRecompensa('Eliminar respuesta incorrecta');
+
+    if (!usada) {
+      setMensajeAyuda(
+        'No tienes esta recompensa disponible. Puedes comprarla en Recompensas.'
+      );
+      return;
+    }
+
+    const opcionEliminada = incorrectasDisponibles[0];
+
+    setOpcionesEliminadas([...opcionesEliminadas, opcionEliminada]);
+    setMensajeAyuda(`Se eliminó una respuesta incorrecta: ${opcionEliminada}.`);
+
+    if (respuesta === opcionEliminada) {
+      setRespuesta('');
+    }
+  };
+
+  const usarReintento = () => {
+    if (!respondido || correcta) {
+      setMensajeAyuda('El reintento solo se puede usar después de una respuesta incorrecta.');
+      return;
+    }
+
+    const usada = consumirRecompensa('Reintento');
+
+    if (!usada) {
+      setMensajeAyuda('No tienes reintentos disponibles. Puedes comprar uno en Recompensas.');
+      return;
+    }
+
+    setRespuesta('');
+    setMensaje('');
+    setRespondido(false);
+    setCorrecta(false);
+    setMensajeAyuda('Reintento activado. Puedes responder nuevamente.');
+  };
 
   const responderQuiz = () => {
     if (respuesta === '') {
@@ -39,11 +134,11 @@ function Quiz() {
     }
 
     if (respuesta === preguntaActual.correcta) {
-      setMensaje('Respuesta correcta. Has ganado puntos para tu resultado final.');
+      setMensaje('Respuesta correcta.');
       setCorrecta(true);
-      setAciertos(aciertos + 1);
+      setAciertos((valorActual) => valorActual + 1);
     } else {
-      setMensaje(`Respuesta incorrecta. La respuesta correcta es ${preguntaActual.correcta}.`);
+      setMensaje(`Respuesta incorrecta. La respuesta correcta es: ${preguntaActual.correcta}.`);
       setCorrecta(false);
     }
 
@@ -57,8 +152,11 @@ function Quiz() {
       setIndicePregunta(siguiente);
       setRespuesta('');
       setMensaje('');
+      setMensajeAyuda('');
       setRespondido(false);
       setCorrecta(false);
+      setOpcionesEliminadas([]);
+      setPistaActiva(false);
     } else {
       finalizarQuiz();
     }
@@ -74,19 +172,47 @@ function Quiz() {
     localStorage.setItem('xp', xpActual + xpGanado);
     localStorage.setItem('monedas', monedasActuales + monedasGanadas);
 
+    const historialActual =
+      JSON.parse(localStorage.getItem('historialQuizzes')) || [];
+
+    const nuevoQuiz = {
+      clase: claseActual.clase,
+      preguntas: preguntas.length,
+      aciertos,
+      xp: xpGanado,
+      monedas: monedasGanadas,
+      fecha: new Date().toLocaleDateString(),
+    };
+
+    localStorage.setItem(
+      'historialQuizzes',
+      JSON.stringify([nuevoQuiz, ...historialActual])
+    );
+
     setQuizFinalizado(true);
-    setMensaje(`Quiz finalizado. Obtuviste ${aciertos} de ${preguntas.length} respuestas correctas.`);
+    setMensaje(
+      `Quiz finalizado. Obtuviste ${aciertos} de ${preguntas.length} respuestas correctas.`
+    );
   };
 
-  const reiniciarQuiz = () => {
+  function reiniciarQuiz() {
     setIndicePregunta(0);
     setRespuesta('');
     setMensaje('');
+    setMensajeAyuda('');
     setRespondido(false);
     setCorrecta(false);
     setAciertos(0);
     setQuizFinalizado(false);
-  };
+    setOpcionesEliminadas([]);
+    setPistaActiva(false);
+  }
+
+  const porcentajeResultado = Math.round((aciertos / preguntas.length) * 100);
+
+  const opcionesVisibles = preguntaActual.opciones.filter(
+    (opcion) => !opcionesEliminadas.includes(opcion)
+  );
 
   return (
     <div className="page">
@@ -95,13 +221,31 @@ function Quiz() {
       <main className="main-content">
         <section className="quiz-header">
           <div>
+            <span className="eyebrow">Evaluación rápida</span>
             <h1>Quiz de práctica</h1>
-            <p>Responde correctamente para ganar experiencia y monedas.</p>
+            <p>Usa tus recompensas para ayudarte durante la evaluación.</p>
           </div>
 
           <Link to="/dashboard" className="secondary-action">
             Volver al dashboard
           </Link>
+        </section>
+
+        <section className="quiz-selector">
+          <div>
+            <label>Selecciona una clase</label>
+            <select
+              value={claseSeleccionada}
+              onChange={(e) => setClaseSeleccionada(Number(e.target.value))}
+              disabled={respondido && !quizFinalizado}
+            >
+              {contenidosEstudio.map((clase, index) => (
+                <option key={clase.clase} value={index}>
+                  {clase.icono} {clase.clase}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
 
         <section className="quiz-layout">
@@ -114,8 +258,14 @@ function Quiz() {
 
                 <h2>{preguntaActual.pregunta}</h2>
 
+                <p className="quiz-topic">
+                  Tema: <strong>{preguntaActual.tema}</strong>
+                </p>
+
+                {mensajeAyuda && <div className="help-box">{mensajeAyuda}</div>}
+
                 <div className="options-list">
-                  {preguntaActual.opciones.map((opcion) => (
+                  {opcionesVisibles.map((opcion) => (
                     <label
                       key={opcion}
                       className={`option-card ${
@@ -155,31 +305,74 @@ function Quiz() {
                 )}
               </>
             ) : (
-              <>
+              <div className="quiz-final-card">
                 <span className="quiz-label">Resultado final</span>
 
                 <h2>Quiz completado</h2>
 
+                <div className="final-score">
+                  <strong>{porcentajeResultado}%</strong>
+                  <span>
+                    {aciertos} de {preguntas.length} respuestas correctas
+                  </span>
+                </div>
+
                 <div className="result-box success">
-                  {mensaje}
-                  <br />
                   Ganaste {aciertos * 100} XP y {aciertos * 25} monedas.
                 </div>
 
                 <button className="quiz-button" onClick={reiniciarQuiz}>
                   Repetir quiz
                 </button>
-              </>
+              </div>
             )}
           </div>
 
           <aside className="reward-panel">
-            <h3>Progreso del quiz</h3>
-            <p>Tu rendimiento actual:</p>
+            <h3>Herramientas del inventario</h3>
+            <p>Usa recompensas compradas en la tienda.</p>
+
+            <div className="quiz-tools">
+              <button
+                className="tool-button"
+                onClick={usarPista}
+                disabled={quizFinalizado || respondido || obtenerCantidad('Pista') === 0}
+              >
+                💡 Usar pista
+                <span>{obtenerCantidad('Pista')}</span>
+              </button>
+
+              <button
+                className="tool-button"
+                onClick={eliminarRespuestaIncorrecta}
+                disabled={
+                  quizFinalizado ||
+                  respondido ||
+                  obtenerCantidad('Eliminar respuesta incorrecta') === 0
+                }
+              >
+                ❌ Eliminar incorrecta
+                <span>{obtenerCantidad('Eliminar respuesta incorrecta')}</span>
+              </button>
+
+              <button
+                className="tool-button"
+                onClick={usarReintento}
+                disabled={
+                  quizFinalizado ||
+                  !respondido ||
+                  correcta ||
+                  obtenerCantidad('Reintento') === 0
+                }
+              >
+                🔁 Usar reintento
+                <span>{obtenerCantidad('Reintento')}</span>
+              </button>
+            </div>
 
             <div className="reward-item">
-              <span>Preguntas</span>
-              <strong>{preguntas.length}</strong>
+              <span>Clase</span>
+              <strong>{claseActual.clase}</strong>
             </div>
 
             <div className="reward-item">

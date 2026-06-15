@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Login() {
   const navigate = useNavigate();
@@ -16,19 +16,24 @@ function Login() {
       return;
     }
 
-    if (!correo.includes('@')) {
-      setError('Ingresa un correo electrónico válido.');
+    const usuarioRegistrado =
+      JSON.parse(localStorage.getItem('usuarioRegistrado')) || null;
+
+    if (!usuarioRegistrado) {
+      setError('No hay una cuenta registrada. Primero debes crear una cuenta.');
       return;
     }
 
-    if (contrasena.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres.');
+    if (
+      correo !== usuarioRegistrado.correo ||
+      contrasena !== usuarioRegistrado.contrasena
+    ) {
+      setError('Correo o contraseña incorrectos.');
       return;
     }
 
+    localStorage.setItem('usuario', usuarioRegistrado.correo);
     setError('');
-
-    localStorage.setItem('usuario', correo);
     navigate('/dashboard');
   };
 
@@ -94,7 +99,7 @@ function Login() {
           </form>
 
           <p className="register">
-            ¿No tienes cuenta? <span>Crear cuenta próximamente</span>
+            ¿No tienes cuenta? <Link to="/registro">Crear cuenta</Link>
           </p>
         </section>
       </div>

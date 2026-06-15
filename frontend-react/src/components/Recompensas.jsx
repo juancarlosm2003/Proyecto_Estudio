@@ -5,14 +5,11 @@ import Navbar from './Navbar';
 function Recompensas() {
   const [monedas, setMonedas] = useState(350);
   const [mensaje, setMensaje] = useState('');
-
-  useEffect(() => {
-    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
-    setMonedas(monedasGuardadas);
-  }, []);
+  const [inventario, setInventario] = useState([]);
 
   const recompensas = [
     {
+      id: 1,
       nombre: 'Pista',
       descripcion: 'Recibe una ayuda durante una pregunta difícil.',
       costo: 50,
@@ -20,6 +17,7 @@ function Recompensas() {
       tipo: 'Ayuda rápida',
     },
     {
+      id: 2,
       nombre: 'Eliminar respuesta incorrecta',
       descripcion: 'Elimina una opción incorrecta en preguntas de selección múltiple.',
       costo: 100,
@@ -27,6 +25,7 @@ function Recompensas() {
       tipo: 'Ventaja académica',
     },
     {
+      id: 3,
       nombre: 'Reintento',
       descripcion: 'Permite volver a responder una pregunta fallida.',
       costo: 150,
@@ -35,17 +34,45 @@ function Recompensas() {
     },
   ];
 
-  const canjearRecompensa = (nombre, costo) => {
-    if (monedas < costo) {
+  useEffect(() => {
+    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
+    const inventarioGuardado =
+      JSON.parse(localStorage.getItem('inventarioRecompensas')) || [];
+
+    setMonedas(monedasGuardadas);
+    setInventario(inventarioGuardado);
+  }, []);
+
+  const canjearRecompensa = (recompensa) => {
+    if (monedas < recompensa.costo) {
       setMensaje('No tienes suficientes monedas para esta recompensa.');
       return;
     }
 
-    const nuevasMonedas = monedas - costo;
+    const nuevasMonedas = monedas - recompensa.costo;
+
+    const nuevaRecompensa = {
+      id: Date.now(),
+      nombre: recompensa.nombre,
+      icono: recompensa.icono,
+      tipo: recompensa.tipo,
+      costo: recompensa.costo,
+      fecha: new Date().toLocaleDateString(),
+    };
+
+    const nuevoInventario = [nuevaRecompensa, ...inventario];
 
     setMonedas(nuevasMonedas);
+    setInventario(nuevoInventario);
+
     localStorage.setItem('monedas', nuevasMonedas);
-    setMensaje(`Has canjeado: ${nombre}.`);
+    localStorage.setItem('inventarioRecompensas', JSON.stringify(nuevoInventario));
+
+    setMensaje(`Has canjeado: ${recompensa.nombre}. Ahora está en tu inventario.`);
+  };
+
+  const obtenerCantidad = (nombre) => {
+    return inventario.filter((item) => item.nombre === nombre).length;
   };
 
   return (
@@ -71,9 +98,10 @@ function Recompensas() {
         <section className="rewards-grid">
           {recompensas.map((recompensa) => {
             const puedeCanjear = monedas >= recompensa.costo;
+            const cantidadComprada = obtenerCantidad(recompensa.nombre);
 
             return (
-              <article className="reward-card" key={recompensa.nombre}>
+              <article className="reward-card" key={recompensa.id}>
                 <div className="reward-icon">{recompensa.icono}</div>
 
                 <span className="reward-type">{recompensa.tipo}</span>
@@ -86,11 +114,14 @@ function Recompensas() {
                   <strong>{recompensa.costo} monedas</strong>
                 </div>
 
+                <div className="reward-owned">
+                  <span>En inventario</span>
+                  <strong>{cantidadComprada}</strong>
+                </div>
+
                 <button
                   className={puedeCanjear ? 'reward-button' : 'reward-button disabled'}
-                  onClick={() =>
-                    canjearRecompensa(recompensa.nombre, recompensa.costo)
-                  }
+                  onClick={() => canjearRecompensa(recompensa)}
                   disabled={!puedeCanjear}
                 >
                   {puedeCanjear ? 'Canjear recompensa' : 'Monedas insuficientes'}
@@ -98,6 +129,39 @@ function Recompensas() {
               </article>
             );
           })}
+        </section>
+
+        <section className="inventory-section">
+          <div className="section-title">
+            <div>
+              <h2>Inventario de recompensas</h2>
+              <p>Recompensas que has comprado y puedes usar después.</p>
+            </div>
+          </div>
+
+          <div className="inventory-list">
+            {inventario.length === 0 ? (
+              <div className="inventory-empty">
+                <span>🎒</span>
+                <p>Aún no tienes recompensas en tu inventario.</p>
+              </div>
+            ) : (
+              inventario.map((item) => (
+                <div className="inventory-item" key={item.id}>
+                  <div>
+                    <span className="inventory-icon">{item.icono}</span>
+
+                    <div>
+                      <strong>{item.nombre}</strong>
+                      <p>{item.tipo} · Comprado el {item.fecha}</p>
+                    </div>
+                  </div>
+
+                  <span className="inventory-status">Disponible</span>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         <Link to="/dashboard" className="back-button">

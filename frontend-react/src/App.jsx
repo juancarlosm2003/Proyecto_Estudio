@@ -1,24 +1,84 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import './App.css';
-import SesionEstudio from './components/SesionEstudio';
+import { Routes, Route } from 'react-router-dom';
+
 import Login from './components/Login';
+import Registro from './components/Registro';
 import Dashboard from './components/Dashboard';
 import Quiz from './components/Quiz';
+import SesionEstudio from './components/SesionEstudio';
 import Recompensas from './components/Recompensas';
 import Progreso from './components/Progreso';
-
+import ProtectedRoute from './components/ProtectedRoute';
+import Perfil from './components/Perfil';
+import Logros from './components/Logros';
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/quiz" element={<Quiz />} />
-        <Route path="/recompensas" element={<Recompensas />} />
-        <Route path="/progreso" element={<Progreso />} />
-        <Route path="/sesion-estudio" element={<SesionEstudio />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/registro" element={<Registro />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/quiz"
+        element={
+          <ProtectedRoute>
+            <Quiz />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/sesion-estudio"
+        element={
+          <ProtectedRoute>
+            <SesionEstudio />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/recompensas"
+        element={
+          <ProtectedRoute>
+            <Recompensas />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/progreso"
+        element={
+          <ProtectedRoute>
+            <Progreso />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <ProtectedRoute>
+            <Perfil />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logros"
+        element={
+          <ProtectedRoute>
+            <Logros />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Login />} />
+    </Routes>
   );
 }
+
 export default App;
