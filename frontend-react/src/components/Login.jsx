@@ -7,34 +7,60 @@ function Login() {
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
+
+  const obtenerUsuarioRegistrado = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuarioRegistrado')) || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const limpiarError = () => {
+    if (error) {
+      setError('');
+    }
+  };
 
   const iniciarSesion = (e) => {
     e.preventDefault();
 
-    if (correo.trim() === '' || contrasena.trim() === '') {
+    const correoIngresado = correo.trim().toLowerCase();
+    const contrasenaIngresada = contrasena;
+
+    if (correoIngresado === '' || contrasenaIngresada === '') {
       setError('Debes ingresar correo y contraseña.');
       return;
     }
 
-    const usuarioRegistrado =
-      JSON.parse(localStorage.getItem('usuarioRegistrado')) || null;
+    const usuarioRegistrado = obtenerUsuarioRegistrado();
 
     if (!usuarioRegistrado) {
       setError('No hay una cuenta registrada. Primero debes crear una cuenta.');
       return;
     }
 
+    const correoRegistrado = usuarioRegistrado.correo.trim().toLowerCase();
+
     if (
-      correo !== usuarioRegistrado.correo ||
-      contrasena !== usuarioRegistrado.contrasena
+      correoIngresado !== correoRegistrado ||
+      contrasenaIngresada !== usuarioRegistrado.contrasena
     ) {
       setError('Correo o contraseña incorrectos.');
       return;
     }
 
-    localStorage.setItem('usuario', usuarioRegistrado.correo);
+    const sesionUsuario = {
+      correo: usuarioRegistrado.correo,
+      nombre: usuarioRegistrado.nombre || 'Estudiante',
+      fechaInicio: new Date().toISOString()
+    };
+
+    localStorage.setItem('usuario', JSON.stringify(sesionUsuario));
+
     setError('');
-    navigate('/dashboard');
+    navigate('/dashboard', { replace: true });
   };
 
   return (
@@ -79,19 +105,44 @@ function Login() {
               type="email"
               placeholder="estudiante@correo.com"
               value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
+              onChange={(e) => {
+                setCorreo(e.target.value);
+                limpiarError();
+              }}
+              autoComplete="email"
+              required
             />
 
             <label htmlFor="contrasena">Contraseña</label>
-            <input
-              id="contrasena"
-              type="password"
-              placeholder="Ingresa tu contraseña"
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-            />
 
-            {error && <div className="login-error">{error}</div>}
+            <div className="password-container">
+              <input
+                id="contrasena"
+                type={mostrarContrasena ? 'text' : 'password'}
+                placeholder="Ingresa tu contraseña"
+                value={contrasena}
+                onChange={(e) => {
+                  setContrasena(e.target.value);
+                  limpiarError();
+                }}
+                autoComplete="current-password"
+                required
+              />
+
+              <button
+                type="button"
+                className="show-password-button"
+                onClick={() => setMostrarContrasena(!mostrarContrasena)}
+              >
+                {mostrarContrasena ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+
+            {error && (
+              <div className="login-error" role="alert">
+                {error}
+              </div>
+            )}
 
             <button type="submit" className="login-button">
               Entrar al sistema

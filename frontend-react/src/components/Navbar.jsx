@@ -44,41 +44,41 @@ function Navbar() {
 
       <nav className="sidebar-nav">
         <NavLink to="/dashboard">
-          <span>🏠</span>
+          <span></span>
           Dashboard
         </NavLink>
 
         <NavLink to="/quiz">
-          <span>📝</span>
+          <span></span>
           Quiz
         </NavLink>
 
         <NavLink to="/sesion-estudio">
-          <span>📚</span>
+          <span></span>
           Sesión de Estudio
         </NavLink>
 
         <NavLink to="/recompensas">
-          <span>🎁</span>
+          <span></span>
           Recompensas
         </NavLink>
 
         <NavLink to="/progreso">
-          <span>📈</span>
+          <span></span>
           Progreso
         </NavLink>
 
         <NavLink to="/perfil">
-          <span>👤</span>
+          <span></span>
           Perfil
         </NavLink>
         <NavLink to="/logros">
-          <span>🏅</span>
+          <span></span>
           Logros
         </NavLink>
       </nav>
       <button className="logout-button" onClick={cerrarSesion}>
-        <span>🚪</span>
+        <span></span>
         Cerrar Sesión
       </button>
     </aside>

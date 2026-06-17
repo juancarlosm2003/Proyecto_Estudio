@@ -64,7 +64,7 @@ function Logros() {
     {
       nombre: 'Primer paso',
       descripcion: 'Completa tu primera sesión de estudio.',
-      icono: '📚',
+      icono: '',
       actual: historialSesiones.length,
       meta: 1,
       desbloqueado: historialSesiones.length >= 1,
@@ -72,7 +72,7 @@ function Logros() {
     {
       nombre: 'Primer quiz',
       descripcion: 'Completa tu primer quiz de práctica.',
-      icono: '📝',
+      icono: '',
       actual: historialQuizzes.length,
       meta: 1,
       desbloqueado: historialQuizzes.length >= 1,
@@ -80,7 +80,7 @@ function Logros() {
     {
       nombre: 'Aprendiz activo',
       descripcion: 'Completa 3 actividades entre sesiones y quizzes.',
-      icono: '🏅',
+      icono: '',
       actual: totalActividades,
       meta: 3,
       desbloqueado: totalActividades >= 3,
@@ -88,7 +88,7 @@ function Logros() {
     {
       nombre: 'Modo enfoque',
       descripcion: 'Completa 5 sesiones de estudio.',
-      icono: '🔥',
+      icono: '',
       actual: historialSesiones.length,
       meta: 5,
       desbloqueado: historialSesiones.length >= 5,
@@ -96,7 +96,7 @@ function Logros() {
     {
       nombre: 'Evaluador constante',
       descripcion: 'Completa 3 quizzes.',
-      icono: '⭐',
+      icono: '',
       actual: historialQuizzes.length,
       meta: 3,
       desbloqueado: historialQuizzes.length >= 3,
@@ -104,7 +104,7 @@ function Logros() {
     {
       nombre: 'Explorador académico',
       descripcion: 'Estudia al menos 3 clases diferentes.',
-      icono: '🧭',
+      icono: '',
       actual: clasesEstudiadas.length,
       meta: 3,
       desbloqueado: clasesEstudiadas.length >= 3,
@@ -112,7 +112,7 @@ function Logros() {
     {
       nombre: 'Buena precisión',
       descripcion: 'Alcanza 80% o más de aciertos en quizzes.',
-      icono: '🎯',
+      icono: '',
       actual: porcentajeAciertos,
       meta: 80,
       desbloqueado: porcentajeAciertos >= 80 && preguntasTotales > 0,
@@ -120,7 +120,7 @@ function Logros() {
     {
       nombre: 'Coleccionista',
       descripcion: 'Ten 3 recompensas en tu inventario.',
-      icono: '🎒',
+      icono: '',
       actual: inventario.length,
       meta: 3,
       desbloqueado: inventario.length >= 3,
@@ -128,7 +128,7 @@ function Logros() {
     {
       nombre: 'Nivel avanzado',
       descripcion: 'Alcanza el nivel 5.',
-      icono: '🏆',
+      icono: '',
       actual: nivel,
       meta: 5,
       desbloqueado: nivel >= 5,

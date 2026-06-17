@@ -2060,3 +2060,24 @@ button {
     grid-template-columns: 1fr;
   }
 }
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  width: 100%;
+  padding-right: 85px;
+}
+
+.show-password-button {
+  position: absolute;
+  right: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #4f46e5;
+  font-weight: 600;
+}

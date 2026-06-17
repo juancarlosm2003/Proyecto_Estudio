@@ -47,14 +47,12 @@ function Dashboard() {
       tipo: 'Sesión de estudio',
       descripcion: `${item.clase} - ${item.tema}`,
       recompensa: `+${item.xp} XP / +${item.monedas} monedas`,
-      icono: '📚',
       fecha: item.fecha,
     })),
     ...historialQuizzes.map((item) => ({
       tipo: 'Quiz completado',
       descripcion: `${item.clase} - ${item.aciertos}/${item.preguntas} correctas`,
       recompensa: `+${item.xp} XP / +${item.monedas} monedas`,
-      icono: '📝',
       fecha: item.fecha,
     })),
   ].slice(0, 4);
@@ -64,25 +62,21 @@ function Dashboard() {
       titulo: 'Experiencia',
       valor: `${xp} XP`,
       descripcion: 'Progreso acumulado',
-      icono: '⚡',
     },
     {
       titulo: 'Monedas',
       valor: monedas,
       descripcion: 'Disponibles para recompensas',
-      icono: '🪙',
     },
     {
       titulo: 'Nivel',
       valor: nivel,
       descripcion: 'Nivel actual',
-      icono: '🏆',
     },
     {
       titulo: 'Actividades',
       valor: historialSesiones.length + historialQuizzes.length,
       descripcion: 'Sesiones y quizzes',
-      icono: '📚',
     },
   ];
 
@@ -90,25 +84,21 @@ function Dashboard() {
     {
       titulo: 'Quiz',
       descripcion: 'Evalúa tus conocimientos por clase y gana recompensas.',
-      icono: '📝',
       ruta: '/quiz',
     },
     {
       titulo: 'Sesión de estudio',
       descripcion: 'Estudia conceptos, ejemplos y responde mini preguntas.',
-      icono: '📚',
       ruta: '/sesion-estudio',
     },
     {
       titulo: 'Recompensas',
       descripcion: 'Canjea tus monedas por pistas, reintentos y ayudas.',
-      icono: '🎁',
       ruta: '/recompensas',
     },
     {
       titulo: 'Progreso',
       descripcion: 'Consulta tu historial, insignias y rendimiento.',
-      icono: '📈',
       ruta: '/progreso',
     },
   ];
@@ -193,7 +183,6 @@ function Dashboard() {
             {actividadesRecientes.length === 0 ? (
               <div className="history-item">
                 <div>
-                  <span className="history-icon">📭</span>
                   <span>Aún no tienes actividad registrada.</span>
                 </div>
 
