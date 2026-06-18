@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import contenidosEstudio from '../data/contenidosEstudio';
+import API_URL from '../services/api';
 
 function SesionEstudio() {
   const DURACION_INICIAL = 25 * 60;
@@ -13,13 +14,23 @@ function SesionEstudio() {
   const [sesionPausada, setSesionPausada] = useState(false);
   const [sesionCompletada, setSesionCompletada] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [tipoMensaje, setTipoMensaje] = useState('');
   const [respuesta, setRespuesta] = useState('');
   const [respuestaCorrecta, setRespuestaCorrecta] = useState(false);
   const [preguntaRespondida, setPreguntaRespondida] = useState(false);
   const [checklistMarcado, setChecklistMarcado] = useState([]);
+  const [guardandoSesion, setGuardandoSesion] = useState(false);
 
   const claseActual = contenidosEstudio[claseSeleccionada];
   const temaActual = claseActual.temas[temaSeleccionado];
+
+  const obtenerUsuarioActivo = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuario')) || null;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     setTemaSeleccionado(0);
@@ -28,6 +39,7 @@ function SesionEstudio() {
     setPreguntaRespondida(false);
     setRespuestaCorrecta(false);
     setMensaje('');
+    setTipoMensaje('');
   }, [claseSeleccionada]);
 
   useEffect(() => {
@@ -36,6 +48,7 @@ function SesionEstudio() {
     setPreguntaRespondida(false);
     setRespuestaCorrecta(false);
     setMensaje('');
+    setTipoMensaje('');
   }, [temaSeleccionado]);
 
   useEffect(() => {
@@ -60,16 +73,19 @@ function SesionEstudio() {
     setSesionPausada(false);
     setSesionCompletada(false);
     setMensaje('Sesión iniciada. Lee el contenido y responde la mini pregunta.');
+    setTipoMensaje('info');
   };
 
   const pausarSesion = () => {
     setSesionPausada(true);
     setMensaje('Sesión pausada.');
+    setTipoMensaje('info');
   };
 
   const continuarSesion = () => {
     setSesionPausada(false);
     setMensaje('Sesión reanudada.');
+    setTipoMensaje('info');
   };
 
   const marcarChecklist = (index) => {
@@ -83,6 +99,7 @@ function SesionEstudio() {
   const responderPregunta = () => {
     if (respuesta === '') {
       setMensaje('Selecciona una respuesta antes de continuar.');
+      setTipoMensaje('error');
       return;
     }
 
@@ -91,53 +108,99 @@ function SesionEstudio() {
     if (respuesta === temaActual.correcta) {
       setRespuestaCorrecta(true);
       setMensaje('Respuesta correcta. Ya puedes completar la sesión.');
+      setTipoMensaje('success');
     } else {
       setRespuestaCorrecta(false);
       setMensaje(`Respuesta incorrecta. La respuesta correcta es: ${temaActual.correcta}.`);
+      setTipoMensaje('error');
     }
   };
 
-  const completarSesion = () => {
+  const completarSesion = async () => {
     if (!preguntaRespondida) {
       setMensaje('Primero responde la mini pregunta para completar la sesión.');
+      setTipoMensaje('error');
       return;
     }
 
     if (!respuestaCorrecta) {
       setMensaje('Debes responder correctamente para ganar la recompensa.');
+      setTipoMensaje('error');
       return;
     }
 
-    if (sesionCompletada) return;
+    if (sesionCompletada || guardandoSesion) return;
+
+    const usuarioActivo = obtenerUsuarioActivo();
+    const usuarioId = localStorage.getItem('usuarioId') || usuarioActivo?.id;
+
+    if (!usuarioId) {
+      setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
+      setTipoMensaje('error');
+      return;
+    }
 
     const xpGanado = 100;
     const monedasGanadas = 30;
 
-    const xpActual = Number(localStorage.getItem('xp')) || 1200;
-    const monedasActuales = Number(localStorage.getItem('monedas')) || 350;
+    try {
+      setGuardandoSesion(true);
+      setMensaje('Guardando sesión...');
+      setTipoMensaje('info');
 
-    localStorage.setItem('xp', xpActual + xpGanado);
-    localStorage.setItem('monedas', monedasActuales + monedasGanadas);
+      const respuestaBackend = await fetch(`${API_URL}/api/sesiones`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usuario_id: usuarioId,
+          clase: claseActual.clase,
+          tema: temaActual.titulo,
+          xp: xpGanado,
+          monedas: monedasGanadas,
+        }),
+      });
 
-    const historialActual = JSON.parse(localStorage.getItem('historialSesiones')) || [];
+      const datos = await respuestaBackend.json();
 
-    const nuevaSesion = {
-      clase: claseActual.clase,
-      tema: temaActual.titulo,
-      xp: xpGanado,
-      monedas: monedasGanadas,
-      fecha: new Date().toLocaleDateString(),
-    };
+      if (!respuestaBackend.ok) {
+        setMensaje(datos.mensaje || 'No se pudo guardar la sesión.');
+        setTipoMensaje('error');
+        return;
+      }
 
-    localStorage.setItem(
-      'historialSesiones',
-      JSON.stringify([nuevaSesion, ...historialActual])
-    );
+      const nuevaSesion = datos.sesion;
 
-    setSesionCompletada(true);
-    setSesionIniciada(false);
-    setSesionPausada(false);
-    setMensaje('Sesión completada. Ganaste 100 XP y 30 monedas.');
+      const historialActual =
+        JSON.parse(localStorage.getItem('historialSesiones')) || [];
+
+      localStorage.setItem(
+        'historialSesiones',
+        JSON.stringify([nuevaSesion, ...historialActual])
+      );
+
+      if (usuarioActivo) {
+        const usuarioActualizado = {
+          ...usuarioActivo,
+          xp: (usuarioActivo.xp || 0) + xpGanado,
+          monedas: (usuarioActivo.monedas || 0) + monedasGanadas,
+        };
+
+        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
+      }
+
+      setSesionCompletada(true);
+      setSesionIniciada(false);
+      setSesionPausada(false);
+      setMensaje('Sesión completada. Ganaste 100 XP y 30 monedas.');
+      setTipoMensaje('success');
+    } catch {
+      setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+      setTipoMensaje('error');
+    } finally {
+      setGuardandoSesion(false);
+    }
   };
 
   const reiniciarSesion = () => {
@@ -146,6 +209,7 @@ function SesionEstudio() {
     setSesionPausada(false);
     setSesionCompletada(false);
     setMensaje('');
+    setTipoMensaje('');
     setRespuesta('');
     setPreguntaRespondida(false);
     setRespuestaCorrecta(false);
@@ -292,7 +356,15 @@ function SesionEstudio() {
             </div>
 
             {mensaje && (
-              <div className={respuestaCorrecta || sesionCompletada ? 'result-box success' : 'result-box error'}>
+              <div
+                className={
+                  tipoMensaje === 'success'
+                    ? 'result-box success'
+                    : tipoMensaje === 'error'
+                    ? 'result-box error'
+                    : 'result-box'
+                }
+              >
                 {mensaje}
               </div>
             )}
@@ -329,9 +401,9 @@ function SesionEstudio() {
               <button
                 className="finish-button"
                 onClick={completarSesion}
-                disabled={sesionCompletada}
+                disabled={sesionCompletada || guardandoSesion}
               >
-                Completar sesión
+                {guardandoSesion ? 'Guardando...' : 'Completar sesión'}
               </button>
 
               <button className="reset-button" onClick={reiniciarSesion}>
