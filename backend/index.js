@@ -1,11 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import { dbConnect, supabaseAdmin } from './config/db.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 dbConnect();
 
@@ -93,10 +97,26 @@ app.post('/api/usuarios/registro', async (req, res) => {
     });
   }
 
+  const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+    email: correo,
+    password: contrasena,
+    options: {
+      data: { nombre },
+    },
+  });
+
+   if (authError) {
+    return res.status(500).json({
+      mensaje: 'Error al autenticar al usuario',
+      error: authError.message,
+    });
+  }
+
   const { data, error } = await supabaseAdmin
     .from('usuarios')
     .insert([
       {
+        id: authData.user.id,
         nombre,
         correo,
         contrasena,
@@ -107,6 +127,7 @@ app.post('/api/usuarios/registro', async (req, res) => {
     ])
     .select()
     .single();
+
 
   if (error) {
     return res.status(500).json({
