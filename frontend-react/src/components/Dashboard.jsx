@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
+import API_URL from '../services/api';
 
 const XP_POR_NIVEL = 500;
 
@@ -31,18 +32,6 @@ const ACTIVIDADES_DISPONIBLES = [
   },
 ];
 
-function obtenerNumeroLocalStorage(clave, valorInicial) {
-  const valor = localStorage.getItem(clave);
-
-  if (valor === null || valor.trim() === '') {
-    return valorInicial;
-  }
-
-  const numero = Number(valor);
-
-  return Number.isFinite(numero) ? numero : valorInicial;
-}
-
 function obtenerJSONLocalStorage(clave, valorInicial) {
   try {
     const valor = localStorage.getItem(clave);
@@ -69,39 +58,82 @@ function formatearFecha(fecha) {
 }
 
 function Dashboard() {
-  const [xp, setXp] = useState(1200);
-  const [monedas, setMonedas] = useState(350);
+  const [xp, setXp] = useState(0);
+  const [monedas, setMonedas] = useState(0);
   const [nombreUsuario, setNombreUsuario] = useState('estudiante');
   const [historialSesiones, setHistorialSesiones] = useState([]);
   const [historialQuizzes, setHistorialQuizzes] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorServidor, setErrorServidor] = useState('');
 
   useEffect(() => {
-    const xpGuardado = obtenerNumeroLocalStorage('xp', 1200);
-    const monedasGuardadas = obtenerNumeroLocalStorage('monedas', 350);
+    const usuarioLocal = obtenerJSONLocalStorage('usuario', null);
+    const usuarioId = localStorage.getItem('usuarioId') || usuarioLocal?.id;
 
-    const usuarioRegistrado = obtenerJSONLocalStorage(
-      'usuarioRegistrado',
-      null
-    );
-
-    const sesionesGuardadas = obtenerJSONLocalStorage(
-      'historialSesiones',
-      []
-    );
-
-    const quizzesGuardados = obtenerJSONLocalStorage(
-      'historialQuizzes',
-      []
-    );
-
-    setXp(xpGuardado);
-    setMonedas(monedasGuardadas);
-    setHistorialSesiones(sesionesGuardadas);
-    setHistorialQuizzes(quizzesGuardados);
-
-    if (usuarioRegistrado?.nombre) {
-      setNombreUsuario(usuarioRegistrado.nombre);
+    if (usuarioLocal) {
+      setNombreUsuario(usuarioLocal.nombre || 'estudiante');
+      setXp(usuarioLocal.xp || 0);
+      setMonedas(usuarioLocal.monedas || 0);
     }
+
+    const cargarProgreso = async () => {
+      if (!usuarioId) {
+        setCargando(false);
+        setErrorServidor('No se encontró el usuario activo.');
+        return;
+      }
+
+      try {
+        setCargando(true);
+        setErrorServidor('');
+
+        const respuesta = await fetch(`${API_URL}/api/progreso/${usuarioId}`);
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+          setErrorServidor(datos.mensaje || 'No se pudo cargar el progreso.');
+          return;
+        }
+
+        const usuarioBackend = datos.usuario;
+
+        if (usuarioBackend) {
+          setNombreUsuario(usuarioBackend.nombre || 'estudiante');
+          setXp(usuarioBackend.xp || 0);
+          setMonedas(usuarioBackend.monedas || 0);
+
+          const sesionActualizada = {
+            id: usuarioBackend.id,
+            nombre: usuarioBackend.nombre || 'Estudiante',
+            correo: usuarioBackend.correo,
+            xp: usuarioBackend.xp || 0,
+            monedas: usuarioBackend.monedas || 0,
+            nivel: usuarioBackend.nivel || 1,
+            fechaInicio: usuarioLocal?.fechaInicio || new Date().toISOString(),
+          };
+
+          localStorage.setItem('usuario', JSON.stringify(sesionActualizada));
+          localStorage.setItem('usuarioId', usuarioBackend.id);
+        }
+
+        const sesiones = datos.sesiones || [];
+        const quizzes = datos.quizzes || [];
+
+        setHistorialSesiones(sesiones);
+        setHistorialQuizzes(quizzes);
+
+        localStorage.setItem('historialSesiones', JSON.stringify(sesiones));
+        localStorage.setItem('historialQuizzes', JSON.stringify(quizzes));
+      } catch {
+        setErrorServidor(
+          'No se pudo conectar con el servidor. Revisa que el backend esté encendido.'
+        );
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarProgreso();
   }, []);
 
   const nivel = useMemo(() => {
@@ -150,8 +182,8 @@ function Dashboard() {
   );
 
   const actividadesRecientes = useMemo(() => {
-    const sesiones = historialSesiones.map((item, index) => ({
-      id: `sesion-${index}`,
+    const sesiones = historialSesiones.map((item) => ({
+      id: item.id || `sesion-${item.fecha}`,
       icono: 'SE',
       tipo: 'Sesión de estudio',
       descripcion: `${item.clase || 'Sin clase'} - ${item.tema || 'Sin tema'}`,
@@ -160,8 +192,8 @@ function Dashboard() {
       timestamp: new Date(item.fecha).getTime() || 0,
     }));
 
-    const quizzes = historialQuizzes.map((item, index) => ({
-      id: `quiz-${index}`,
+    const quizzes = historialQuizzes.map((item) => ({
+      id: item.id || `quiz-${item.fecha}`,
       icono: 'QZ',
       tipo: 'Quiz completado',
       descripcion: `${item.clase || 'Sin clase'} - ${item.aciertos || 0}/${
@@ -192,6 +224,14 @@ function Dashboard() {
               Continúa aprendiendo, completa actividades y desbloquea nuevas
               recompensas.
             </p>
+
+            {cargando && <p>Cargando progreso...</p>}
+
+            {errorServidor && (
+              <div className="login-error" role="alert">
+                {errorServidor}
+              </div>
+            )}
           </div>
 
           <div className="hero-actions">
