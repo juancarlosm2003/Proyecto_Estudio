@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import Login from './components/Login';
@@ -7,10 +8,21 @@ import Quiz from './components/Quiz';
 import SesionEstudio from './components/SesionEstudio';
 import Recompensas from './components/Recompensas';
 import Progreso from './components/Progreso';
-import ProtectedRoute from './components/ProtectedRoute';
 import Perfil from './components/Perfil';
 import Logros from './components/Logros';
+import ProtectedRoute from './components/ProtectedRoute';
+
 function App() {
+  useEffect(() => {
+    const temaGuardado = localStorage.getItem('tema');
+
+    if (temaGuardado === 'oscuro') {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Login />} />
@@ -60,6 +72,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/perfil"
         element={
@@ -68,6 +81,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/logros"
         element={
@@ -76,6 +90,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
       <Route path="*" element={<Login />} />
     </Routes>
   );

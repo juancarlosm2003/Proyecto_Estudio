@@ -10,6 +10,7 @@ function Perfil() {
   const [xp, setXp] = useState(1200);
   const [monedas, setMonedas] = useState(350);
   const [mensaje, setMensaje] = useState('');
+  const [modoOscuro, setModoOscuro] = useState(false);
 
   useEffect(() => {
     const usuarioGuardado =
@@ -18,14 +19,36 @@ function Perfil() {
     const xpGuardado = Number(localStorage.getItem('xp')) || 1200;
     const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
 
+    const temaGuardado = localStorage.getItem('tema');
+
     setUsuario(usuarioGuardado);
     setNombre(usuarioGuardado?.nombre || '');
     setXp(xpGuardado);
     setMonedas(monedasGuardadas);
+
+    if (temaGuardado === 'oscuro') {
+      setModoOscuro(true);
+      document.body.classList.add('dark-mode');
+    } else {
+      setModoOscuro(false);
+      document.body.classList.remove('dark-mode');
+    }
   }, []);
 
   const xpPorNivel = 500;
   const nivel = Math.floor(xp / xpPorNivel) + 1;
+
+  const obtenerIniciales = () => {
+    if (!nombre.trim()) return 'E';
+
+    return nombre
+      .trim()
+      .split(' ')
+      .map((palabra) => palabra[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  };
 
   const guardarCambios = () => {
     if (nombre.trim() === '') {
@@ -35,12 +58,32 @@ function Perfil() {
 
     const usuarioActualizado = {
       ...usuario,
-      nombre,
+      nombre: nombre.trim(),
     };
 
-    localStorage.setItem('usuarioRegistrado', JSON.stringify(usuarioActualizado));
+    localStorage.setItem(
+      'usuarioRegistrado',
+      JSON.stringify(usuarioActualizado)
+    );
+
     setUsuario(usuarioActualizado);
     setMensaje('Perfil actualizado correctamente.');
+  };
+
+  const cambiarTema = () => {
+    const nuevoModo = !modoOscuro;
+
+    setModoOscuro(nuevoModo);
+
+    if (nuevoModo) {
+      document.body.classList.add('dark-mode');
+      localStorage.setItem('tema', 'oscuro');
+      setMensaje('Modo oscuro activado.');
+    } else {
+      document.body.classList.remove('dark-mode');
+      localStorage.setItem('tema', 'claro');
+      setMensaje('Modo claro activado.');
+    }
   };
 
   const reiniciarProgreso = () => {
@@ -75,20 +118,15 @@ function Perfil() {
           <div>
             <span className="eyebrow">Cuenta del estudiante</span>
             <h1>Perfil y ajustes</h1>
-            <p>Administra tu información, progreso y configuración de StudyQuest.</p>
+            <p>
+              Administra tu información, progreso y configuración de StudyQuest.
+            </p>
           </div>
         </section>
 
         <section className="profile-grid">
           <div className="profile-card">
-            <div className="profile-avatar">
-              {nombre
-                .split(' ')
-                .map((palabra) => palabra[0])
-                .join('')
-                .slice(0, 2)
-                .toUpperCase()}
-            </div>
+            <div className="profile-avatar">{obtenerIniciales()}</div>
 
             <h2>{usuario?.nombre || 'Estudiante'}</h2>
             <p>{usuario?.correo || 'Sin correo registrado'}</p>
@@ -113,7 +151,9 @@ function Perfil() {
 
           <div className="settings-card">
             <h2>Editar perfil</h2>
-            <p>Actualiza el nombre que aparece en tu dashboard y menú lateral.</p>
+            <p>
+              Actualiza el nombre que aparece en tu dashboard y menú lateral.
+            </p>
 
             <label htmlFor="nombre">Nombre del estudiante</label>
             <input
@@ -128,6 +168,12 @@ function Perfil() {
             <div className="settings-actions">
               <button className="save-button" onClick={guardarCambios}>
                 Guardar cambios
+              </button>
+
+              <button className="theme-button" onClick={cambiarTema}>
+                {modoOscuro
+                  ? '☀️ Cambiar a modo claro'
+                  : '🌙 Cambiar a modo oscuro'}
               </button>
 
               <button className="danger-button" onClick={reiniciarProgreso}>
