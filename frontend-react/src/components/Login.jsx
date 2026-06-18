@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import API_URL from '../services/api';
 
 function Login() {
   const navigate = useNavigate();
@@ -8,14 +9,7 @@ function Login() {
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
-
-  const obtenerUsuarioRegistrado = () => {
-    try {
-      return JSON.parse(localStorage.getItem('usuarioRegistrado')) || null;
-    } catch {
-      return null;
-    }
-  };
+  const [cargando, setCargando] = useState(false);
 
   const limpiarError = () => {
     if (error) {
@@ -23,7 +17,7 @@ function Login() {
     }
   };
 
-  const iniciarSesion = (e) => {
+  const iniciarSesion = async (e) => {
     e.preventDefault();
 
     const correoIngresado = correo.trim().toLowerCase();
@@ -34,33 +28,53 @@ function Login() {
       return;
     }
 
-    const usuarioRegistrado = obtenerUsuarioRegistrado();
+    try {
+      setCargando(true);
+      setError('');
 
-    if (!usuarioRegistrado) {
-      setError('No hay una cuenta registrada. Primero debes crear una cuenta.');
-      return;
+      const respuesta = await fetch(`${API_URL}/api/usuarios/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          correo: correoIngresado,
+          contrasena: contrasenaIngresada,
+        }),
+      });
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        setError(datos.mensaje || 'No se pudo iniciar sesión.');
+        return;
+      }
+
+      const usuarioBackend = datos.usuario;
+
+      const sesionUsuario = {
+        id: usuarioBackend.id,
+        correo: usuarioBackend.correo,
+        nombre: usuarioBackend.nombre || 'Estudiante',
+        xp: usuarioBackend.xp || 0,
+        monedas: usuarioBackend.monedas || 0,
+        nivel: usuarioBackend.nivel || 1,
+        fechaInicio: new Date().toISOString(),
+      };
+
+      localStorage.setItem('usuario', JSON.stringify(sesionUsuario));
+      localStorage.setItem('usuarioId', usuarioBackend.id);
+
+      setCorreo('');
+      setContrasena('');
+      setError('');
+
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      setError('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+    } finally {
+      setCargando(false);
     }
-
-    const correoRegistrado = usuarioRegistrado.correo.trim().toLowerCase();
-
-    if (
-      correoIngresado !== correoRegistrado ||
-      contrasenaIngresada !== usuarioRegistrado.contrasena
-    ) {
-      setError('Correo o contraseña incorrectos.');
-      return;
-    }
-
-    const sesionUsuario = {
-      correo: usuarioRegistrado.correo,
-      nombre: usuarioRegistrado.nombre || 'Estudiante',
-      fechaInicio: new Date().toISOString()
-    };
-
-    localStorage.setItem('usuario', JSON.stringify(sesionUsuario));
-
-    setError('');
-    navigate('/dashboard', { replace: true });
   };
 
   return (
@@ -78,17 +92,17 @@ function Login() {
 
           <div className="login-features">
             <div>
-              <strong>📝 Quizzes</strong>
+              <strong>Quizzes</strong>
               <span>Practica tus conocimientos.</span>
             </div>
 
             <div>
-              <strong>🎁 Recompensas</strong>
+              <strong>Recompensas</strong>
               <span>Canjea monedas por ayudas.</span>
             </div>
 
             <div>
-              <strong>📈 Progreso</strong>
+              <strong>Progreso</strong>
               <span>Visualiza tu avance académico.</span>
             </div>
           </div>
@@ -144,8 +158,8 @@ function Login() {
               </div>
             )}
 
-            <button type="submit" className="login-button">
-              Entrar al sistema
+            <button type="submit" className="login-button" disabled={cargando}>
+              {cargando ? 'Ingresando...' : 'Entrar al sistema'}
             </button>
           </form>
 
