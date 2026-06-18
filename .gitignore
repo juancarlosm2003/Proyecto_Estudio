@@ -1,4 +1,11 @@
+# Backend
+backend/node_modules
+backend/.env
+.env
+node_modules
 
+# Permitir archivo de ejemplo
+!backend/.env.example
 # Backend
 backend/node_modules
 backend/.env
