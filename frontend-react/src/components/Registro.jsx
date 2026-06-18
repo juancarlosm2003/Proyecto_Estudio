@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import API_URL from '../services/api';
 
 function Registro() {
   const navigate = useNavigate();
@@ -9,53 +10,97 @@ function Registro() {
   const [contrasena, setContrasena] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
   const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-  const registrarUsuario = (e) => {
+  const limpiarError = () => {
+    if (error) {
+      setError('');
+    }
+  };
+
+  const registrarUsuario = async (e) => {
     e.preventDefault();
 
+    const nombreIngresado = nombre.trim();
+    const correoIngresado = correo.trim().toLowerCase();
+    const contrasenaIngresada = contrasena;
+    const confirmarContrasenaIngresada = confirmarContrasena;
+
     if (
-      nombre.trim() === '' ||
-      correo.trim() === '' ||
-      contrasena.trim() === '' ||
-      confirmarContrasena.trim() === ''
+      nombreIngresado === '' ||
+      correoIngresado === '' ||
+      contrasenaIngresada === '' ||
+      confirmarContrasenaIngresada === ''
     ) {
       setError('Debes completar todos los campos.');
       return;
     }
 
-    if (!correo.includes('@')) {
+    if (!correoIngresado.includes('@')) {
       setError('Ingresa un correo electrónico válido.');
       return;
     }
 
-    if (contrasena.length < 4) {
+    if (contrasenaIngresada.length < 4) {
       setError('La contraseña debe tener al menos 4 caracteres.');
       return;
     }
 
-    if (contrasena !== confirmarContrasena) {
+    if (contrasenaIngresada !== confirmarContrasenaIngresada) {
       setError('Las contraseñas no coinciden.');
       return;
     }
 
-    const usuario = {
-      nombre,
-      correo,
-      contrasena,
-    };
+    try {
+      setCargando(true);
+      setError('');
 
-    localStorage.setItem('usuarioRegistrado', JSON.stringify(usuario));
-    localStorage.setItem('usuario', correo);
+      const respuesta = await fetch(`${API_URL}/api/usuarios/registro`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: nombreIngresado,
+          correo: correoIngresado,
+          contrasena: contrasenaIngresada,
+        }),
+      });
 
-    if (!localStorage.getItem('xp')) {
-      localStorage.setItem('xp', 1200);
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        setError(datos.mensaje || 'No se pudo crear la cuenta.');
+        return;
+      }
+
+      const usuarioBackend = datos.usuario;
+
+      const sesionUsuario = {
+        id: usuarioBackend.id,
+        nombre: usuarioBackend.nombre || 'Estudiante',
+        correo: usuarioBackend.correo,
+        xp: usuarioBackend.xp || 0,
+        monedas: usuarioBackend.monedas || 0,
+        nivel: usuarioBackend.nivel || 1,
+        fechaInicio: new Date().toISOString(),
+      };
+
+      localStorage.setItem('usuario', JSON.stringify(sesionUsuario));
+      localStorage.setItem('usuarioId', usuarioBackend.id);
+
+      setNombre('');
+      setCorreo('');
+      setContrasena('');
+      setConfirmarContrasena('');
+      setError('');
+
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      setError('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+    } finally {
+      setCargando(false);
     }
-
-    if (!localStorage.getItem('monedas')) {
-      localStorage.setItem('monedas', 350);
-    }
-
-    navigate('/dashboard');
   };
 
   return (
@@ -73,17 +118,17 @@ function Registro() {
 
           <div className="login-features">
             <div>
-              <strong>📚 Lecciones guiadas</strong>
+              <strong>Lecciones guiadas</strong>
               <span>Aprende por clase y tema.</span>
             </div>
 
             <div>
-              <strong>📝 Quizzes</strong>
+              <strong>Quizzes</strong>
               <span>Evalúa tus conocimientos.</span>
             </div>
 
             <div>
-              <strong>🏆 Progreso</strong>
+              <strong>Progreso</strong>
               <span>Visualiza tu avance académico.</span>
             </div>
           </div>
@@ -100,7 +145,12 @@ function Registro() {
               type="text"
               placeholder="Ej. Juan Carlos"
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              onChange={(e) => {
+                setNombre(e.target.value);
+                limpiarError();
+              }}
+              autoComplete="name"
+              required
             />
 
             <label htmlFor="correo">Correo electrónico</label>
@@ -109,7 +159,12 @@ function Registro() {
               type="email"
               placeholder="estudiante@correo.com"
               value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
+              onChange={(e) => {
+                setCorreo(e.target.value);
+                limpiarError();
+              }}
+              autoComplete="email"
+              required
             />
 
             <label htmlFor="contrasena">Contraseña</label>
@@ -118,7 +173,12 @@ function Registro() {
               type="password"
               placeholder="Crea una contraseña"
               value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
+              onChange={(e) => {
+                setContrasena(e.target.value);
+                limpiarError();
+              }}
+              autoComplete="new-password"
+              required
             />
 
             <label htmlFor="confirmarContrasena">Confirmar contraseña</label>
@@ -127,13 +187,22 @@ function Registro() {
               type="password"
               placeholder="Repite tu contraseña"
               value={confirmarContrasena}
-              onChange={(e) => setConfirmarContrasena(e.target.value)}
+              onChange={(e) => {
+                setConfirmarContrasena(e.target.value);
+                limpiarError();
+              }}
+              autoComplete="new-password"
+              required
             />
 
-            {error && <div className="login-error">{error}</div>}
+            {error && (
+              <div className="login-error" role="alert">
+                {error}
+              </div>
+            )}
 
-            <button type="submit" className="login-button">
-              Crear cuenta
+            <button type="submit" className="login-button" disabled={cargando}>
+              {cargando ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>
           </form>
 
