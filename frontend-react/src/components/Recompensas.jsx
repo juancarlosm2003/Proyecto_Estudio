@@ -1,74 +1,201 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
+import API_URL from '../services/api';
 
 function Recompensas() {
-  const [monedas, setMonedas] = useState(350);
+  const [monedas, setMonedas] = useState(0);
   const [mensaje, setMensaje] = useState('');
+  const [tipoMensaje, setTipoMensaje] = useState('');
   const [inventario, setInventario] = useState([]);
+  const [recompensas, setRecompensas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [canjeandoId, setCanjeandoId] = useState(null);
 
-  const recompensas = [
-    {
-      id: 1,
-      nombre: 'Pista',
-      descripcion: 'Recibe una ayuda durante una pregunta difícil.',
-      costo: 50,
-      icono: '💡',
-      tipo: 'Ayuda rápida',
-    },
-    {
-      id: 2,
-      nombre: 'Eliminar respuesta incorrecta',
-      descripcion: 'Elimina una opción incorrecta en preguntas de selección múltiple.',
-      costo: 100,
-      icono: '❌',
-      tipo: 'Ventaja académica',
-    },
-    {
-      id: 3,
-      nombre: 'Reintento',
-      descripcion: 'Permite volver a responder una pregunta fallida.',
-      costo: 150,
-      icono: '🔁',
-      tipo: 'Segunda oportunidad',
-    },
-  ];
+  const obtenerUsuarioActivo = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuario')) || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const obtenerUsuarioId = () => {
+    const usuarioActivo = obtenerUsuarioActivo();
+    return localStorage.getItem('usuarioId') || usuarioActivo?.id;
+  };
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return 'Sin fecha';
+
+    const fechaConvertida = new Date(fecha);
+
+    if (Number.isNaN(fechaConvertida.getTime())) {
+      return fecha;
+    }
+
+    return new Intl.DateTimeFormat('es-HN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(fechaConvertida);
+  };
 
   useEffect(() => {
-    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
-    const inventarioGuardado =
-      JSON.parse(localStorage.getItem('inventarioRecompensas')) || [];
+    const cargarDatos = async () => {
+      const usuarioActivo = obtenerUsuarioActivo();
+      const usuarioId = obtenerUsuarioId();
 
-    setMonedas(monedasGuardadas);
-    setInventario(inventarioGuardado);
+      if (usuarioActivo) {
+        setMonedas(usuarioActivo.monedas || 0);
+      }
+
+      if (!usuarioId) {
+        setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
+        setTipoMensaje('error');
+        setCargando(false);
+        return;
+      }
+
+      try {
+        setCargando(true);
+        setMensaje('');
+        setTipoMensaje('');
+
+        const [respuestaRecompensas, respuestaProgreso, respuestaInventario] =
+          await Promise.all([
+            fetch(`${API_URL}/api/recompensas`),
+            fetch(`${API_URL}/api/progreso/${usuarioId}`),
+            fetch(`${API_URL}/api/inventario/${usuarioId}`),
+          ]);
+
+        const datosRecompensas = await respuestaRecompensas.json();
+        const datosProgreso = await respuestaProgreso.json();
+        const datosInventario = await respuestaInventario.json();
+
+        if (!respuestaRecompensas.ok) {
+          setMensaje(datosRecompensas.mensaje || 'No se pudieron cargar las recompensas.');
+          setTipoMensaje('error');
+          return;
+        }
+
+        if (!respuestaProgreso.ok) {
+          setMensaje(datosProgreso.mensaje || 'No se pudo cargar el progreso.');
+          setTipoMensaje('error');
+          return;
+        }
+
+        if (!respuestaInventario.ok) {
+          setMensaje(datosInventario.mensaje || 'No se pudo cargar el inventario.');
+          setTipoMensaje('error');
+          return;
+        }
+
+        setRecompensas(datosRecompensas.recompensas || []);
+        setInventario(datosInventario.inventario || []);
+
+        const usuarioBackend = datosProgreso.usuario;
+
+        if (usuarioBackend) {
+          setMonedas(usuarioBackend.monedas || 0);
+
+          const usuarioActualizado = {
+            id: usuarioBackend.id,
+            nombre: usuarioBackend.nombre || 'Estudiante',
+            correo: usuarioBackend.correo,
+            xp: usuarioBackend.xp || 0,
+            monedas: usuarioBackend.monedas || 0,
+            nivel: usuarioBackend.nivel || 1,
+            fechaInicio: usuarioActivo?.fechaInicio || new Date().toISOString(),
+          };
+
+          localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
+          localStorage.setItem('usuarioId', usuarioBackend.id);
+        }
+
+        localStorage.setItem(
+          'inventarioRecompensas',
+          JSON.stringify(datosInventario.inventario || [])
+        );
+      } catch {
+        setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+        setTipoMensaje('error');
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDatos();
   }, []);
 
-  const canjearRecompensa = (recompensa) => {
-    if (monedas < recompensa.costo) {
-      setMensaje('No tienes suficientes monedas para esta recompensa.');
+  const canjearRecompensa = async (recompensa) => {
+    const usuarioActivo = obtenerUsuarioActivo();
+    const usuarioId = obtenerUsuarioId();
+
+    if (!usuarioId) {
+      setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
+      setTipoMensaje('error');
       return;
     }
 
-    const nuevasMonedas = monedas - recompensa.costo;
+    if (monedas < recompensa.costo) {
+      setMensaje('No tienes suficientes monedas para esta recompensa.');
+      setTipoMensaje('error');
+      return;
+    }
 
-    const nuevaRecompensa = {
-      id: Date.now(),
-      nombre: recompensa.nombre,
-      icono: recompensa.icono,
-      tipo: recompensa.tipo,
-      costo: recompensa.costo,
-      fecha: new Date().toLocaleDateString(),
-    };
+    try {
+      setCanjeandoId(recompensa.id);
+      setMensaje('');
+      setTipoMensaje('');
 
-    const nuevoInventario = [nuevaRecompensa, ...inventario];
+      const respuesta = await fetch(`${API_URL}/api/recompensas/canjear`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usuario_id: usuarioId,
+          recompensa_id: recompensa.id,
+        }),
+      });
 
-    setMonedas(nuevasMonedas);
-    setInventario(nuevoInventario);
+      const datos = await respuesta.json();
 
-    localStorage.setItem('monedas', nuevasMonedas);
-    localStorage.setItem('inventarioRecompensas', JSON.stringify(nuevoInventario));
+      if (!respuesta.ok) {
+        setMensaje(datos.mensaje || 'No se pudo canjear la recompensa.');
+        setTipoMensaje('error');
+        return;
+      }
 
-    setMensaje(`Has canjeado: ${recompensa.nombre}. Ahora está en tu inventario.`);
+      const usuarioActualizado = datos.usuario;
+      const nuevaRecompensa = datos.inventario;
+
+      setMonedas(usuarioActualizado.monedas || 0);
+      setInventario((inventarioActual) => [nuevaRecompensa, ...inventarioActual]);
+
+      if (usuarioActualizado) {
+        const usuarioLocalActualizado = {
+          ...usuarioActivo,
+          id: usuarioActualizado.id,
+          nombre: usuarioActualizado.nombre || usuarioActivo?.nombre || 'Estudiante',
+          correo: usuarioActualizado.correo || usuarioActivo?.correo,
+          xp: usuarioActualizado.xp || usuarioActivo?.xp || 0,
+          monedas: usuarioActualizado.monedas || 0,
+          nivel: usuarioActualizado.nivel || usuarioActivo?.nivel || 1,
+        };
+
+        localStorage.setItem('usuario', JSON.stringify(usuarioLocalActualizado));
+      }
+
+      setMensaje(`Has canjeado: ${recompensa.nombre}. Ahora está en tu inventario.`);
+      setTipoMensaje('success');
+    } catch {
+      setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+      setTipoMensaje('error');
+    } finally {
+      setCanjeandoId(null);
+    }
   };
 
   const obtenerCantidad = (nombre) => {
@@ -93,21 +220,39 @@ function Recompensas() {
           </div>
         </section>
 
-        {mensaje && <div className="store-message">{mensaje}</div>}
+        {cargando && <div className="store-message">Cargando recompensas...</div>}
+
+        {mensaje && (
+          <div
+            className={
+              tipoMensaje === 'error'
+                ? 'store-message result-box error'
+                : tipoMensaje === 'success'
+                ? 'store-message result-box success'
+                : 'store-message'
+            }
+          >
+            {mensaje}
+          </div>
+        )}
 
         <section className="rewards-grid">
           {recompensas.map((recompensa) => {
             const puedeCanjear = monedas >= recompensa.costo;
             const cantidadComprada = obtenerCantidad(recompensa.nombre);
+            const estaCanjeando = canjeandoId === recompensa.id;
 
             return (
               <article className="reward-card" key={recompensa.id}>
-                <div className="reward-icon">{recompensa.icono}</div>
+                <div className="reward-icon">{recompensa.icono || 'RC'}</div>
 
                 <span className="reward-type">{recompensa.tipo}</span>
 
                 <h2>{recompensa.nombre}</h2>
-                <p>{recompensa.descripcion}</p>
+                <p>
+                  {recompensa.descripcion ||
+                    'Recompensa académica disponible para canjear con monedas.'}
+                </p>
 
                 <div className="reward-price">
                   <span>Costo</span>
@@ -122,9 +267,13 @@ function Recompensas() {
                 <button
                   className={puedeCanjear ? 'reward-button' : 'reward-button disabled'}
                   onClick={() => canjearRecompensa(recompensa)}
-                  disabled={!puedeCanjear}
+                  disabled={!puedeCanjear || estaCanjeando}
                 >
-                  {puedeCanjear ? 'Canjear recompensa' : 'Monedas insuficientes'}
+                  {estaCanjeando
+                    ? 'Canjeando...'
+                    : puedeCanjear
+                    ? 'Canjear recompensa'
+                    : 'Monedas insuficientes'}
                 </button>
               </article>
             );
@@ -142,18 +291,20 @@ function Recompensas() {
           <div className="inventory-list">
             {inventario.length === 0 ? (
               <div className="inventory-empty">
-                <span>🎒</span>
+                <span>IN</span>
                 <p>Aún no tienes recompensas en tu inventario.</p>
               </div>
             ) : (
               inventario.map((item) => (
                 <div className="inventory-item" key={item.id}>
                   <div>
-                    <span className="inventory-icon">{item.icono}</span>
+                    <span className="inventory-icon">{item.icono || 'RC'}</span>
 
                     <div>
                       <strong>{item.nombre}</strong>
-                      <p>{item.tipo} · Comprado el {item.fecha}</p>
+                      <p>
+                        {item.tipo} · Comprado el {formatearFecha(item.fecha)}
+                      </p>
                     </div>
                   </div>
 

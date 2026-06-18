@@ -434,6 +434,131 @@ app.get('/api/progreso/:usuarioId', async (req, res) => {
 });
 
 /* =========================
+   INVENTARIO Y CANJE DE RECOMPENSAS
+========================= */
+
+app.get('/api/inventario/:usuarioId', async (req, res) => {
+  const { usuarioId } = req.params;
+
+  const { data, error } = await supabaseAdmin
+    .from('inventario_recompensas')
+    .select('*')
+    .eq('usuario_id', usuarioId)
+    .order('fecha', { ascending: false });
+
+  if (error) {
+    return res.status(500).json({
+      mensaje: 'Error al obtener inventario',
+      error: error.message,
+    });
+  }
+
+  res.json({
+    mensaje: 'Inventario obtenido correctamente',
+    inventario: data,
+  });
+});
+
+app.post('/api/recompensas/canjear', async (req, res) => {
+  const { usuario_id, recompensa_id } = req.body;
+
+  if (!usuario_id || !recompensa_id) {
+    return res.status(400).json({
+      mensaje: 'usuario_id y recompensa_id son obligatorios',
+    });
+  }
+
+  const { data: recompensa, error: errorRecompensa } = await supabaseAdmin
+    .from('recompensas')
+    .select('*')
+    .eq('id', recompensa_id)
+    .maybeSingle();
+
+  if (errorRecompensa) {
+    return res.status(500).json({
+      mensaje: 'Error al buscar recompensa',
+      error: errorRecompensa.message,
+    });
+  }
+
+  if (!recompensa) {
+    return res.status(404).json({
+      mensaje: 'Recompensa no encontrada',
+    });
+  }
+
+  const { data: usuario, error: errorUsuario } = await supabaseAdmin
+    .from('usuarios')
+    .select('id, monedas')
+    .eq('id', usuario_id)
+    .maybeSingle();
+
+  if (errorUsuario) {
+    return res.status(500).json({
+      mensaje: 'Error al buscar usuario',
+      error: errorUsuario.message,
+    });
+  }
+
+  if (!usuario) {
+    return res.status(404).json({
+      mensaje: 'Usuario no encontrado',
+    });
+  }
+
+  if (usuario.monedas < recompensa.costo) {
+    return res.status(400).json({
+      mensaje: 'No tienes suficientes monedas para esta recompensa',
+    });
+  }
+
+  const nuevasMonedas = usuario.monedas - recompensa.costo;
+
+  const { data: inventario, error: errorInventario } = await supabaseAdmin
+    .from('inventario_recompensas')
+    .insert([
+      {
+        usuario_id,
+        recompensa_id,
+        nombre: recompensa.nombre,
+        tipo: recompensa.tipo,
+        costo: recompensa.costo,
+        icono: recompensa.icono,
+      },
+    ])
+    .select()
+    .single();
+
+  if (errorInventario) {
+    return res.status(500).json({
+      mensaje: 'Error al guardar recompensa en inventario',
+      error: errorInventario.message,
+    });
+  }
+
+  const { data: usuarioActualizado, error: errorActualizarUsuario } =
+    await supabaseAdmin
+      .from('usuarios')
+      .update({ monedas: nuevasMonedas })
+      .eq('id', usuario_id)
+      .select()
+      .single();
+
+  if (errorActualizarUsuario) {
+    return res.status(500).json({
+      mensaje: 'Error al actualizar monedas del usuario',
+      error: errorActualizarUsuario.message,
+    });
+  }
+
+  res.status(201).json({
+    mensaje: 'Recompensa canjeada correctamente',
+    inventario,
+    usuario: usuarioActualizado,
+  });
+});
+
+/* =========================
    SERVIDOR
 ========================= */
 
