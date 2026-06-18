@@ -1,30 +1,33 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
+import API_URL from '../services/api';
 
 function Perfil() {
   const navigate = useNavigate();
 
   const [usuario, setUsuario] = useState(null);
   const [nombre, setNombre] = useState('');
-  const [xp, setXp] = useState(1200);
-  const [monedas, setMonedas] = useState(350);
+  const [xp, setXp] = useState(0);
+  const [monedas, setMonedas] = useState(0);
   const [mensaje, setMensaje] = useState('');
+  const [tipoMensaje, setTipoMensaje] = useState('');
   const [modoOscuro, setModoOscuro] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+
+  const obtenerUsuarioActivo = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuario')) || null;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
-    const usuarioGuardado =
-      JSON.parse(localStorage.getItem('usuarioRegistrado')) || null;
-
-    const xpGuardado = Number(localStorage.getItem('xp')) || 1200;
-    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
-
+    const usuarioLocal = obtenerUsuarioActivo();
+    const usuarioId = localStorage.getItem('usuarioId') || usuarioLocal?.id;
     const temaGuardado = localStorage.getItem('tema');
-
-    setUsuario(usuarioGuardado);
-    setNombre(usuarioGuardado?.nombre || '');
-    setXp(xpGuardado);
-    setMonedas(monedasGuardadas);
 
     if (temaGuardado === 'oscuro') {
       setModoOscuro(true);
@@ -33,6 +36,57 @@ function Perfil() {
       setModoOscuro(false);
       document.body.classList.remove('dark-mode');
     }
+
+    const cargarPerfil = async () => {
+      if (!usuarioId) {
+        setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
+        setTipoMensaje('error');
+        setCargando(false);
+        return;
+      }
+
+      try {
+        setCargando(true);
+        setMensaje('');
+        setTipoMensaje('');
+
+        const respuesta = await fetch(`${API_URL}/api/usuarios/${usuarioId}/perfil`);
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+          setMensaje(datos.mensaje || 'No se pudo cargar el perfil.');
+          setTipoMensaje('error');
+          return;
+        }
+
+        const usuarioBackend = datos.usuario;
+
+        setUsuario(usuarioBackend);
+        setNombre(usuarioBackend.nombre || '');
+        setXp(usuarioBackend.xp || 0);
+        setMonedas(usuarioBackend.monedas || 0);
+
+        const usuarioActualizado = {
+          id: usuarioBackend.id,
+          nombre: usuarioBackend.nombre || 'Estudiante',
+          correo: usuarioBackend.correo,
+          xp: usuarioBackend.xp || 0,
+          monedas: usuarioBackend.monedas || 0,
+          nivel: usuarioBackend.nivel || 1,
+          fechaInicio: usuarioLocal?.fechaInicio || new Date().toISOString(),
+        };
+
+        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
+        localStorage.setItem('usuarioId', usuarioBackend.id);
+      } catch {
+        setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+        setTipoMensaje('error');
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarPerfil();
   }, []);
 
   const xpPorNivel = 500;
@@ -50,24 +104,72 @@ function Perfil() {
       .toUpperCase();
   };
 
-  const guardarCambios = () => {
+  const guardarCambios = async () => {
+    const usuarioId = localStorage.getItem('usuarioId') || usuario?.id;
+
     if (nombre.trim() === '') {
       setMensaje('El nombre no puede estar vacío.');
+      setTipoMensaje('error');
       return;
     }
 
-    const usuarioActualizado = {
-      ...usuario,
-      nombre: nombre.trim(),
-    };
+    if (!usuarioId) {
+      setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
+      setTipoMensaje('error');
+      return;
+    }
 
-    localStorage.setItem(
-      'usuarioRegistrado',
-      JSON.stringify(usuarioActualizado)
-    );
+    try {
+      setGuardando(true);
+      setMensaje('');
+      setTipoMensaje('');
 
-    setUsuario(usuarioActualizado);
-    setMensaje('Perfil actualizado correctamente.');
+      const respuesta = await fetch(`${API_URL}/api/usuarios/${usuarioId}/perfil`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+        }),
+      });
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        setMensaje(datos.mensaje || 'No se pudo actualizar el perfil.');
+        setTipoMensaje('error');
+        return;
+      }
+
+      const usuarioBackend = datos.usuario;
+
+      setUsuario(usuarioBackend);
+      setNombre(usuarioBackend.nombre || '');
+      setXp(usuarioBackend.xp || 0);
+      setMonedas(usuarioBackend.monedas || 0);
+
+      const usuarioActualizado = {
+        id: usuarioBackend.id,
+        nombre: usuarioBackend.nombre || 'Estudiante',
+        correo: usuarioBackend.correo,
+        xp: usuarioBackend.xp || 0,
+        monedas: usuarioBackend.monedas || 0,
+        nivel: usuarioBackend.nivel || 1,
+        fechaInicio: obtenerUsuarioActivo()?.fechaInicio || new Date().toISOString(),
+      };
+
+      localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
+      localStorage.setItem('usuarioId', usuarioBackend.id);
+
+      setMensaje('Perfil actualizado correctamente.');
+      setTipoMensaje('success');
+    } catch {
+      setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+      setTipoMensaje('error');
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const cambiarTema = () => {
@@ -79,33 +181,26 @@ function Perfil() {
       document.body.classList.add('dark-mode');
       localStorage.setItem('tema', 'oscuro');
       setMensaje('Modo oscuro activado.');
+      setTipoMensaje('success');
     } else {
       document.body.classList.remove('dark-mode');
       localStorage.setItem('tema', 'claro');
       setMensaje('Modo claro activado.');
+      setTipoMensaje('success');
     }
   };
 
   const reiniciarProgreso = () => {
-    const confirmar = window.confirm(
-      '¿Seguro que quieres reiniciar tu progreso? Se borrarán XP, monedas, historial e inventario.'
-    );
-
-    if (!confirmar) return;
-
-    localStorage.setItem('xp', 1200);
-    localStorage.setItem('monedas', 350);
-    localStorage.removeItem('historialSesiones');
-    localStorage.removeItem('historialQuizzes');
-    localStorage.removeItem('inventarioRecompensas');
-
-    setXp(1200);
-    setMonedas(350);
-    setMensaje('Progreso reiniciado correctamente.');
+    setMensaje('Para reiniciar progreso en la versión con backend, conviene crear un endpoint específico.');
+    setTipoMensaje('error');
   };
 
   const cerrarSesion = () => {
     localStorage.removeItem('usuario');
+    localStorage.removeItem('usuarioId');
+    localStorage.removeItem('historialSesiones');
+    localStorage.removeItem('historialQuizzes');
+    localStorage.removeItem('inventarioRecompensas');
     navigate('/');
   };
 
@@ -121,6 +216,8 @@ function Perfil() {
             <p>
               Administra tu información, progreso y configuración de StudyQuest.
             </p>
+
+            {cargando && <p>Cargando perfil...</p>}
           </div>
         </section>
 
@@ -160,20 +257,40 @@ function Perfil() {
               id="nombre"
               type="text"
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              onChange={(e) => {
+                setNombre(e.target.value);
+                setMensaje('');
+                setTipoMensaje('');
+              }}
             />
 
-            {mensaje && <div className="store-message">{mensaje}</div>}
+            {mensaje && (
+              <div
+                className={
+                  tipoMensaje === 'error'
+                    ? 'store-message result-box error'
+                    : tipoMensaje === 'success'
+                    ? 'store-message result-box success'
+                    : 'store-message'
+                }
+              >
+                {mensaje}
+              </div>
+            )}
 
             <div className="settings-actions">
-              <button className="save-button" onClick={guardarCambios}>
-                Guardar cambios
+              <button
+                className="save-button"
+                onClick={guardarCambios}
+                disabled={guardando}
+              >
+                {guardando ? 'Guardando...' : 'Guardar cambios'}
               </button>
 
               <button className="theme-button" onClick={cambiarTema}>
                 {modoOscuro
-                  ? '☀️ Cambiar a modo claro'
-                  : '🌙 Cambiar a modo oscuro'}
+                  ? 'Cambiar a modo claro'
+                  : 'Cambiar a modo oscuro'}
               </button>
 
               <button className="danger-button" onClick={reiniciarProgreso}>
