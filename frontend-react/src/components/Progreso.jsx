@@ -2,34 +2,108 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import contenidosEstudio from '../data/contenidosEstudio';
+import API_URL from '../services/api';
 
 function Progreso() {
-  const [xp, setXp] = useState(1200);
-  const [monedas, setMonedas] = useState(350);
+  const [xp, setXp] = useState(0);
+  const [monedas, setMonedas] = useState(0);
   const [historialSesiones, setHistorialSesiones] = useState([]);
   const [historialQuizzes, setHistorialQuizzes] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorServidor, setErrorServidor] = useState('');
+
+  const obtenerUsuarioActivo = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuario')) || null;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
-    const xpGuardado = Number(localStorage.getItem('xp')) || 1200;
-    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
+    const cargarProgreso = async () => {
+      const usuarioActivo = obtenerUsuarioActivo();
+      const usuarioId = localStorage.getItem('usuarioId') || usuarioActivo?.id;
 
-    const sesionesGuardadas =
-      JSON.parse(localStorage.getItem('historialSesiones')) || [];
+      if (!usuarioId) {
+        setErrorServidor('No se encontró el usuario activo. Inicia sesión nuevamente.');
+        setCargando(false);
+        return;
+      }
 
-    const quizzesGuardados =
-      JSON.parse(localStorage.getItem('historialQuizzes')) || [];
+      try {
+        setCargando(true);
+        setErrorServidor('');
 
-    setXp(xpGuardado);
-    setMonedas(monedasGuardadas);
-    setHistorialSesiones(sesionesGuardadas);
-    setHistorialQuizzes(quizzesGuardados);
+        const respuesta = await fetch(`${API_URL}/api/progreso/${usuarioId}`);
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+          setErrorServidor(datos.mensaje || 'No se pudo cargar el progreso.');
+          return;
+        }
+
+        const usuarioBackend = datos.usuario;
+
+        if (usuarioBackend) {
+          setXp(usuarioBackend.xp || 0);
+          setMonedas(usuarioBackend.monedas || 0);
+
+          const usuarioActualizado = {
+            id: usuarioBackend.id,
+            nombre: usuarioBackend.nombre || 'Estudiante',
+            correo: usuarioBackend.correo,
+            xp: usuarioBackend.xp || 0,
+            monedas: usuarioBackend.monedas || 0,
+            nivel: usuarioBackend.nivel || 1,
+            fechaInicio: usuarioActivo?.fechaInicio || new Date().toISOString(),
+          };
+
+          localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
+          localStorage.setItem('usuarioId', usuarioBackend.id);
+        }
+
+        const sesiones = datos.sesiones || [];
+        const quizzes = datos.quizzes || [];
+
+        setHistorialSesiones(sesiones);
+        setHistorialQuizzes(quizzes);
+
+        localStorage.setItem('historialSesiones', JSON.stringify(sesiones));
+        localStorage.setItem('historialQuizzes', JSON.stringify(quizzes));
+      } catch {
+        setErrorServidor(
+          'No se pudo conectar con el servidor. Revisa que el backend esté encendido.'
+        );
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarProgreso();
   }, []);
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return 'Sin fecha';
+
+    const fechaConvertida = new Date(fecha);
+
+    if (Number.isNaN(fechaConvertida.getTime())) {
+      return fecha;
+    }
+
+    return new Intl.DateTimeFormat('es-HN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(fechaConvertida);
+  };
 
   const xpPorNivel = 500;
   const nivel = Math.floor(xp / xpPorNivel) + 1;
   const progresoNivel = xp % xpPorNivel;
   const porcentajeProgreso = Math.round((progresoNivel / xpPorNivel) * 100);
-  const xpRestante = xpPorNivel - progresoNivel;
+  const xpRestante = progresoNivel === 0 ? xpPorNivel : xpPorNivel - progresoNivel;
 
   const progresoStyle = {
     width: porcentajeProgreso + '%',
@@ -47,32 +121,32 @@ function Progreso() {
     );
 
     const xpSesiones = sesionesClase.reduce(
-      (total, item) => total + item.xp,
+      (total, item) => total + (item.xp || 0),
       0
     );
 
     const xpQuizzes = quizzesClase.reduce(
-      (total, item) => total + item.xp,
+      (total, item) => total + (item.xp || 0),
       0
     );
 
     const monedasSesiones = sesionesClase.reduce(
-      (total, item) => total + item.monedas,
+      (total, item) => total + (item.monedas || 0),
       0
     );
 
     const monedasQuizzes = quizzesClase.reduce(
-      (total, item) => total + item.monedas,
+      (total, item) => total + (item.monedas || 0),
       0
     );
 
     const aciertos = quizzesClase.reduce(
-      (total, item) => total + item.aciertos,
+      (total, item) => total + (item.aciertos || 0),
       0
     );
 
     const preguntas = quizzesClase.reduce(
-      (total, item) => total + item.preguntas,
+      (total, item) => total + (item.preguntas || 0),
       0
     );
 
@@ -97,25 +171,25 @@ function Progreso() {
       titulo: 'Nivel actual',
       valor: nivel,
       descripcion: 'Nivel del estudiante',
-      icono: '🏆',
+      icono: 'NV',
     },
     {
       titulo: 'Experiencia total',
       valor: xp + ' XP',
       descripcion: 'Acumulada por actividades',
-      icono: '⚡',
+      icono: 'XP',
     },
     {
       titulo: 'Monedas',
       valor: monedas,
       descripcion: 'Disponibles para canjear',
-      icono: '🪙',
+      icono: 'MN',
     },
     {
       titulo: 'Actividades',
       valor: totalActividades,
       descripcion: 'Sesiones y quizzes completados',
-      icono: '📚',
+      icono: 'AC',
     },
   ];
 
@@ -126,7 +200,7 @@ function Progreso() {
         historialSesiones.length > 0
           ? 'Has completado al menos una sesión de estudio.'
           : 'Completa una sesión para desbloquearla.',
-      icono: historialSesiones.length > 0 ? '🔥' : '🔒',
+      icono: historialSesiones.length > 0 ? 'OK' : 'BL',
     },
     {
       nombre: 'Quiz inicial',
@@ -134,7 +208,7 @@ function Progreso() {
         historialQuizzes.length > 0
           ? 'Has completado al menos un quiz.'
           : 'Completa un quiz para desbloquearla.',
-      icono: historialQuizzes.length > 0 ? '⭐' : '🔒',
+      icono: historialQuizzes.length > 0 ? 'OK' : 'BL',
     },
     {
       nombre: 'Aprendiz activo',
@@ -142,7 +216,7 @@ function Progreso() {
         totalActividades >= 3
           ? 'Has completado 3 o más actividades.'
           : 'Completa 3 actividades para desbloquearla.',
-      icono: totalActividades >= 3 ? '🏅' : '🔒',
+      icono: totalActividades >= 3 ? 'OK' : 'BL',
     },
   ];
 
@@ -156,6 +230,14 @@ function Progreso() {
             <span className="eyebrow">Rendimiento académico</span>
             <h1>Progreso del estudiante</h1>
             <p>Consulta tu rendimiento, recompensas e historial de estudio.</p>
+
+            {cargando && <p>Cargando progreso...</p>}
+
+            {errorServidor && (
+              <div className="login-error" role="alert">
+                {errorServidor}
+              </div>
+            )}
           </div>
 
           <Link to="/dashboard" className="secondary-action">
@@ -237,6 +319,11 @@ function Progreso() {
                     <span>XP</span>
                     <strong>{item.xp}</strong>
                   </div>
+
+                  <div>
+                    <span>Monedas</span>
+                    <strong>{item.monedas}</strong>
+                  </div>
                 </div>
               </article>
             ))}
@@ -274,20 +361,21 @@ function Progreso() {
             {historialSesiones.length === 0 ? (
               <div className="history-item">
                 <div>
-                  <span className="history-icon">📭</span>
+                  <span className="history-icon">SN</span>
                   <span>No hay sesiones completadas todavía.</span>
                 </div>
 
                 <strong>Sin datos</strong>
               </div>
             ) : (
-              historialSesiones.map((item, index) => (
-                <div className="history-item" key={index}>
+              historialSesiones.map((item) => (
+                <div className="history-item" key={item.id}>
                   <div>
-                    <span className="history-icon">📚</span>
+                    <span className="history-icon">SE</span>
                     <span>
                       {item.clase} - {item.tema}
                     </span>
+                    <small>{formatearFecha(item.fecha)}</small>
                   </div>
 
                   <strong>
@@ -311,20 +399,21 @@ function Progreso() {
             {historialQuizzes.length === 0 ? (
               <div className="history-item">
                 <div>
-                  <span className="history-icon">📭</span>
+                  <span className="history-icon">SN</span>
                   <span>No hay quizzes completados todavía.</span>
                 </div>
 
                 <strong>Sin datos</strong>
               </div>
             ) : (
-              historialQuizzes.map((item, index) => (
-                <div className="history-item" key={index}>
+              historialQuizzes.map((item) => (
+                <div className="history-item" key={item.id}>
                   <div>
-                    <span className="history-icon">📝</span>
+                    <span className="history-icon">QZ</span>
                     <span>
                       {item.clase} - {item.aciertos}/{item.preguntas} correctas
                     </span>
+                    <small>{formatearFecha(item.fecha)}</small>
                   </div>
 
                   <strong>
