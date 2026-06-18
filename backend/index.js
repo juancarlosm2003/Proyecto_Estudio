@@ -558,6 +558,29 @@ app.post('/api/recompensas/canjear', async (req, res) => {
   });
 });
 
+app.delete('/api/inventario/:inventarioId', async (req, res) => {
+  const { inventarioId } = req.params;
+
+  const { data, error } = await supabaseAdmin
+    .from('inventario_recompensas')
+    .delete()
+    .eq('id', inventarioId)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({
+      mensaje: 'Error al usar la recompensa del inventario',
+      error: error.message,
+    });
+  }
+
+  res.json({
+    mensaje: 'Recompensa usada correctamente',
+    recompensaUsada: data,
+  });
+});
+
 /* =========================
    SERVIDOR
 ========================= */

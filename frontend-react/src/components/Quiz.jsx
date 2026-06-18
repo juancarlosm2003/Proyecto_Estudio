@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import contenidosEstudio from '../data/contenidosEstudio';
+import API_URL from '../services/api';
 
 function Quiz() {
   const [claseSeleccionada, setClaseSeleccionada] = useState(0);
@@ -16,6 +17,7 @@ function Quiz() {
   const [inventario, setInventario] = useState([]);
   const [opcionesEliminadas, setOpcionesEliminadas] = useState([]);
   const [pistaActiva, setPistaActiva] = useState(false);
+  const [guardandoResultado, setGuardandoResultado] = useState(false);
 
   const claseActual = contenidosEstudio[claseSeleccionada];
 
@@ -29,11 +31,51 @@ function Quiz() {
 
   const preguntaActual = preguntas[indicePregunta];
 
-  useEffect(() => {
-    const inventarioGuardado =
-      JSON.parse(localStorage.getItem('inventarioRecompensas')) || [];
+  const obtenerUsuarioActivo = () => {
+    try {
+      return JSON.parse(localStorage.getItem('usuario')) || null;
+    } catch {
+      return null;
+    }
+  };
 
-    setInventario(inventarioGuardado);
+  const obtenerUsuarioId = () => {
+    const usuarioActivo = obtenerUsuarioActivo();
+    return localStorage.getItem('usuarioId') || usuarioActivo?.id;
+  };
+
+  useEffect(() => {
+    const cargarInventario = async () => {
+      const usuarioId = obtenerUsuarioId();
+
+      if (!usuarioId) {
+        setMensajeAyuda('No se encontró el usuario activo. Inicia sesión nuevamente.');
+        return;
+      }
+
+      try {
+        const respuestaInventario = await fetch(`${API_URL}/api/inventario/${usuarioId}`);
+        const datosInventario = await respuestaInventario.json();
+
+        if (!respuestaInventario.ok) {
+          setMensajeAyuda(datosInventario.mensaje || 'No se pudo cargar el inventario.');
+          return;
+        }
+
+        const inventarioBackend = datosInventario.inventario || [];
+
+        setInventario(inventarioBackend);
+        localStorage.setItem('inventarioRecompensas', JSON.stringify(inventarioBackend));
+      } catch {
+        const inventarioGuardado =
+          JSON.parse(localStorage.getItem('inventarioRecompensas')) || [];
+
+        setInventario(inventarioGuardado);
+        setMensajeAyuda('No se pudo conectar con el inventario del servidor.');
+      }
+    };
+
+    cargarInventario();
   }, []);
 
   useEffect(() => {
@@ -44,28 +86,44 @@ function Quiz() {
     return inventario.filter((item) => item.nombre === nombre).length;
   };
 
-  const consumirRecompensa = (nombre) => {
-    const index = inventario.findIndex((item) => item.nombre === nombre);
+  const consumirRecompensa = async (nombre) => {
+    const recompensa = inventario.find((item) => item.nombre === nombre);
 
-    if (index === -1) {
+    if (!recompensa) {
       return false;
     }
 
-    const nuevoInventario = inventario.filter((_, i) => i !== index);
+    try {
+      const respuestaBackend = await fetch(`${API_URL}/api/inventario/${recompensa.id}`, {
+        method: 'DELETE',
+      });
 
-    setInventario(nuevoInventario);
-    localStorage.setItem('inventarioRecompensas', JSON.stringify(nuevoInventario));
+      const datos = await respuestaBackend.json();
 
-    return true;
+      if (!respuestaBackend.ok) {
+        setMensajeAyuda(datos.mensaje || 'No se pudo usar la recompensa.');
+        return false;
+      }
+
+      const nuevoInventario = inventario.filter((item) => item.id !== recompensa.id);
+
+      setInventario(nuevoInventario);
+      localStorage.setItem('inventarioRecompensas', JSON.stringify(nuevoInventario));
+
+      return true;
+    } catch {
+      setMensajeAyuda('No se pudo conectar con el servidor para usar la recompensa.');
+      return false;
+    }
   };
 
-  const usarPista = () => {
+  const usarPista = async () => {
     if (pistaActiva) {
       setMensajeAyuda('Ya usaste una pista en esta pregunta.');
       return;
     }
 
-    const usada = consumirRecompensa('Pista');
+    const usada = await consumirRecompensa('Pista');
 
     if (!usada) {
       setMensajeAyuda('No tienes pistas disponibles. Puedes comprar una en Recompensas.');
@@ -76,7 +134,7 @@ function Quiz() {
     setMensajeAyuda(`Pista: ${preguntaActual.concepto}`);
   };
 
-  const eliminarRespuestaIncorrecta = () => {
+  const eliminarRespuestaIncorrecta = async () => {
     const incorrectasDisponibles = preguntaActual.opciones.filter(
       (opcion) =>
         opcion !== preguntaActual.correcta && !opcionesEliminadas.includes(opcion)
@@ -87,7 +145,7 @@ function Quiz() {
       return;
     }
 
-    const usada = consumirRecompensa('Eliminar respuesta incorrecta');
+    const usada = await consumirRecompensa('Eliminar respuesta incorrecta');
 
     if (!usada) {
       setMensajeAyuda(
@@ -106,13 +164,13 @@ function Quiz() {
     }
   };
 
-  const usarReintento = () => {
+  const usarReintento = async () => {
     if (!respondido || correcta) {
       setMensajeAyuda('El reintento solo se puede usar después de una respuesta incorrecta.');
       return;
     }
 
-    const usada = consumirRecompensa('Reintento');
+    const usada = await consumirRecompensa('Reintento');
 
     if (!usada) {
       setMensajeAyuda('No tienes reintentos disponibles. Puedes comprar uno en Recompensas.');
@@ -162,37 +220,79 @@ function Quiz() {
     }
   };
 
-  const finalizarQuiz = () => {
+  const finalizarQuiz = async () => {
+    if (guardandoResultado || quizFinalizado) return;
+
+    const usuarioActivo = obtenerUsuarioActivo();
+    const usuarioId = obtenerUsuarioId();
+
+    if (!usuarioId) {
+      setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
+      setCorrecta(false);
+      return;
+    }
+
     const xpGanado = aciertos * 100;
     const monedasGanadas = aciertos * 25;
 
-    const xpActual = Number(localStorage.getItem('xp')) || 1200;
-    const monedasActuales = Number(localStorage.getItem('monedas')) || 350;
+    try {
+      setGuardandoResultado(true);
+      setMensaje('Guardando resultado del quiz...');
 
-    localStorage.setItem('xp', xpActual + xpGanado);
-    localStorage.setItem('monedas', monedasActuales + monedasGanadas);
+      const respuestaBackend = await fetch(`${API_URL}/api/quizzes/resultados`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usuario_id: usuarioId,
+          clase: claseActual.clase,
+          preguntas: preguntas.length,
+          aciertos,
+          xp: xpGanado,
+          monedas: monedasGanadas,
+        }),
+      });
 
-    const historialActual =
-      JSON.parse(localStorage.getItem('historialQuizzes')) || [];
+      const datos = await respuestaBackend.json();
 
-    const nuevoQuiz = {
-      clase: claseActual.clase,
-      preguntas: preguntas.length,
-      aciertos,
-      xp: xpGanado,
-      monedas: monedasGanadas,
-      fecha: new Date().toLocaleDateString(),
-    };
+      if (!respuestaBackend.ok) {
+        setMensaje(datos.mensaje || 'No se pudo guardar el resultado del quiz.');
+        setCorrecta(false);
+        return;
+      }
 
-    localStorage.setItem(
-      'historialQuizzes',
-      JSON.stringify([nuevoQuiz, ...historialActual])
-    );
+      const nuevoQuiz = datos.resultado;
 
-    setQuizFinalizado(true);
-    setMensaje(
-      `Quiz finalizado. Obtuviste ${aciertos} de ${preguntas.length} respuestas correctas.`
-    );
+      const historialActual =
+        JSON.parse(localStorage.getItem('historialQuizzes')) || [];
+
+      localStorage.setItem(
+        'historialQuizzes',
+        JSON.stringify([nuevoQuiz, ...historialActual])
+      );
+
+      if (usuarioActivo) {
+        const usuarioActualizado = {
+          ...usuarioActivo,
+          xp: (usuarioActivo.xp || 0) + xpGanado,
+          monedas: (usuarioActivo.monedas || 0) + monedasGanadas,
+        };
+
+        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
+      }
+
+      setQuizFinalizado(true);
+      setMensaje(
+        `Quiz finalizado. Obtuviste ${aciertos} de ${preguntas.length} respuestas correctas.`
+      );
+      setCorrecta(true);
+    } catch {
+      setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
+      setCorrecta(false);
+    } finally {
+      setGuardandoResultado(false);
+    }
   };
 
   function reiniciarQuiz() {
@@ -206,6 +306,7 @@ function Quiz() {
     setQuizFinalizado(false);
     setOpcionesEliminadas([]);
     setPistaActiva(false);
+    setGuardandoResultado(false);
   }
 
   const porcentajeResultado = Math.round((aciertos / preguntas.length) * 100);
@@ -291,8 +392,14 @@ function Quiz() {
                     Responder
                   </button>
                 ) : (
-                  <button className="quiz-button" onClick={siguientePregunta}>
-                    {indicePregunta + 1 === preguntas.length
+                  <button
+                    className="quiz-button"
+                    onClick={siguientePregunta}
+                    disabled={guardandoResultado}
+                  >
+                    {guardandoResultado
+                      ? 'Guardando...'
+                      : indicePregunta + 1 === preguntas.length
                       ? 'Finalizar quiz'
                       : 'Siguiente pregunta'}
                   </button>
@@ -338,7 +445,7 @@ function Quiz() {
                 onClick={usarPista}
                 disabled={quizFinalizado || respondido || obtenerCantidad('Pista') === 0}
               >
-                💡 Usar pista
+                Usar pista
                 <span>{obtenerCantidad('Pista')}</span>
               </button>
 
@@ -351,7 +458,7 @@ function Quiz() {
                   obtenerCantidad('Eliminar respuesta incorrecta') === 0
                 }
               >
-                ❌ Eliminar incorrecta
+                Eliminar incorrecta
                 <span>{obtenerCantidad('Eliminar respuesta incorrecta')}</span>
               </button>
 
@@ -365,7 +472,7 @@ function Quiz() {
                   obtenerCantidad('Reintento') === 0
                 }
               >
-                🔁 Usar reintento
+                Usar reintento
                 <span>{obtenerCantidad('Reintento')}</span>
               </button>
             </div>
