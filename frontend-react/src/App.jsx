@@ -11,6 +11,7 @@ import Progreso from './components/Progreso';
 import Perfil from './components/Perfil';
 import Logros from './components/Logros';
 import ProtectedRoute from './components/ProtectedRoute';
+import EmailConfirmado from './components/Bienvenida';
 
 function App() {
   useEffect(() => {
@@ -87,6 +88,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Logros />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/email-confirmado"
+        element={
+          <ProtectedRoute>
+            <EmailConfirmado />
           </ProtectedRoute>
         }
       />

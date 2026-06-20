@@ -102,6 +102,7 @@ app.post('/api/usuarios/registro', async (req, res) => {
     password: contrasena,
     options: {
       data: { nombre },
+      emailRedirectTo: 'http://localhost:5173/email-confirmado',
     },
   });
 
