@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Recompensas() {
+  const { usuario, actualizarUsuario } = useAuth();
   const [monedas, setMonedas] = useState(0);
   const [mensaje, setMensaje] = useState('');
   const [tipoMensaje, setTipoMensaje] = useState('');
@@ -11,19 +13,6 @@ function Recompensas() {
   const [recompensas, setRecompensas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [canjeandoId, setCanjeandoId] = useState(null);
-
-  const obtenerUsuarioActivo = () => {
-    try {
-      return JSON.parse(localStorage.getItem('usuario')) || null;
-    } catch {
-      return null;
-    }
-  };
-
-  const obtenerUsuarioId = () => {
-    const usuarioActivo = obtenerUsuarioActivo();
-    return localStorage.getItem('usuarioId') || usuarioActivo?.id;
-  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'Sin fecha';
@@ -43,11 +32,10 @@ function Recompensas() {
 
   useEffect(() => {
     const cargarDatos = async () => {
-      const usuarioActivo = obtenerUsuarioActivo();
-      const usuarioId = obtenerUsuarioId();
+      const usuarioId = usuario?.id;
 
-      if (usuarioActivo) {
-        setMonedas(usuarioActivo.monedas || 0);
+      if (usuario) {
+        setMonedas(usuario.monedas || 0);
       }
 
       if (!usuarioId) {
@@ -106,11 +94,10 @@ function Recompensas() {
             xp: usuarioBackend.xp || 0,
             monedas: usuarioBackend.monedas || 0,
             nivel: usuarioBackend.nivel || 1,
-            fechaInicio: usuarioActivo?.fechaInicio || new Date().toISOString(),
+            fechaInicio: new Date().toISOString(),
           };
 
-          localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
-          localStorage.setItem('usuarioId', usuarioBackend.id);
+          actualizarUsuario(usuarioActualizado);
         }
 
         localStorage.setItem(
@@ -126,11 +113,10 @@ function Recompensas() {
     };
 
     cargarDatos();
-  }, []);
+  }, [usuario?.id]);
 
   const canjearRecompensa = async (recompensa) => {
-    const usuarioActivo = obtenerUsuarioActivo();
-    const usuarioId = obtenerUsuarioId();
+    const usuarioId = usuario?.id;
 
     if (!usuarioId) {
       setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
@@ -175,17 +161,17 @@ function Recompensas() {
       setInventario((inventarioActual) => [nuevaRecompensa, ...inventarioActual]);
 
       if (usuarioActualizado) {
-        const usuarioLocalActualizado = {
-          ...usuarioActivo,
+        const usuarioContextActualizado = {
           id: usuarioActualizado.id,
-          nombre: usuarioActualizado.nombre || usuarioActivo?.nombre || 'Estudiante',
-          correo: usuarioActualizado.correo || usuarioActivo?.correo,
-          xp: usuarioActualizado.xp || usuarioActivo?.xp || 0,
-          monedas: usuarioActualizado.monedas || 0,
-          nivel: usuarioActualizado.nivel || usuarioActivo?.nivel || 1,
+          nombre: usuarioActualizado.nombre || usuario?.nombre || 'Estudiante',
+          correo: usuarioActualizado.correo || usuario?.correo,
+          xp: usuarioActualizado.xp ?? usuario?.xp ?? 0,
+          monedas: usuarioActualizado.monedas ?? 0,
+          nivel: usuarioActualizado.nivel ?? usuario?.nivel ?? 1,
+          fechaInicio: new Date().toISOString(),
         };
 
-        localStorage.setItem('usuario', JSON.stringify(usuarioLocalActualizado));
+        actualizarUsuario(usuarioContextActualizado);
       }
 
       setMensaje(`Has canjeado: ${recompensa.nombre}. Ahora está en tu inventario.`);
@@ -228,8 +214,8 @@ function Recompensas() {
               tipoMensaje === 'error'
                 ? 'store-message result-box error'
                 : tipoMensaje === 'success'
-                ? 'store-message result-box success'
-                : 'store-message'
+                  ? 'store-message result-box success'
+                  : 'store-message'
             }
           >
             {mensaje}
@@ -272,8 +258,8 @@ function Recompensas() {
                   {estaCanjeando
                     ? 'Canjeando...'
                     : puedeCanjear
-                    ? 'Canjear recompensa'
-                    : 'Monedas insuficientes'}
+                      ? 'Canjear recompensa'
+                      : 'Monedas insuficientes'}
                 </button>
               </article>
             );
