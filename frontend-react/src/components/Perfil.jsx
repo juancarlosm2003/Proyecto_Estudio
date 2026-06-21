@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Perfil() {
   const navigate = useNavigate();
-
-  const [usuario, setUsuario] = useState(null);
+  const { usuario, actualizarUsuario, logout } = useAuth();
   const [nombre, setNombre] = useState('');
   const [xp, setXp] = useState(0);
   const [monedas, setMonedas] = useState(0);
@@ -16,17 +16,8 @@ function Perfil() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
-  const obtenerUsuarioActivo = () => {
-    try {
-      return JSON.parse(localStorage.getItem('usuario')) || null;
-    } catch {
-      return null;
-    }
-  };
-
   useEffect(() => {
-    const usuarioLocal = obtenerUsuarioActivo();
-    const usuarioId = localStorage.getItem('usuarioId') || usuarioLocal?.id;
+    const usuarioId = usuario?.id;
     const temaGuardado = localStorage.getItem('tema');
 
     if (temaGuardado === 'oscuro') {
@@ -61,7 +52,6 @@ function Perfil() {
 
         const usuarioBackend = datos.usuario;
 
-        setUsuario(usuarioBackend);
         setNombre(usuarioBackend.nombre || '');
         setXp(usuarioBackend.xp || 0);
         setMonedas(usuarioBackend.monedas || 0);
@@ -73,11 +63,10 @@ function Perfil() {
           xp: usuarioBackend.xp || 0,
           monedas: usuarioBackend.monedas || 0,
           nivel: usuarioBackend.nivel || 1,
-          fechaInicio: usuarioLocal?.fechaInicio || new Date().toISOString(),
+          fechaInicio: new Date().toISOString(),
         };
 
-        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
-        localStorage.setItem('usuarioId', usuarioBackend.id);
+        actualizarUsuario(usuarioActualizado);
       } catch {
         setMensaje('No se pudo conectar con el servidor. Revisa que el backend esté encendido.');
         setTipoMensaje('error');
@@ -87,7 +76,7 @@ function Perfil() {
     };
 
     cargarPerfil();
-  }, []);
+  }, [usuario?.id]);
 
   const xpPorNivel = 500;
   const nivel = Math.floor(xp / xpPorNivel) + 1;
@@ -105,7 +94,7 @@ function Perfil() {
   };
 
   const guardarCambios = async () => {
-    const usuarioId = localStorage.getItem('usuarioId') || usuario?.id;
+    const usuarioId = usuario?.id;
 
     if (nombre.trim() === '') {
       setMensaje('El nombre no puede estar vacío.');
@@ -144,7 +133,6 @@ function Perfil() {
 
       const usuarioBackend = datos.usuario;
 
-      setUsuario(usuarioBackend);
       setNombre(usuarioBackend.nombre || '');
       setXp(usuarioBackend.xp || 0);
       setMonedas(usuarioBackend.monedas || 0);
@@ -156,11 +144,10 @@ function Perfil() {
         xp: usuarioBackend.xp || 0,
         monedas: usuarioBackend.monedas || 0,
         nivel: usuarioBackend.nivel || 1,
-        fechaInicio: obtenerUsuarioActivo()?.fechaInicio || new Date().toISOString(),
+        fechaInicio: new Date().toISOString(),
       };
 
-      localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
-      localStorage.setItem('usuarioId', usuarioBackend.id);
+      actualizarUsuario(usuarioActualizado);
 
       setMensaje('Perfil actualizado correctamente.');
       setTipoMensaje('success');
@@ -196,8 +183,7 @@ function Perfil() {
   };
 
   const cerrarSesion = () => {
-    localStorage.removeItem('usuario');
-    localStorage.removeItem('usuarioId');
+    logout();
     localStorage.removeItem('historialSesiones');
     localStorage.removeItem('historialQuizzes');
     localStorage.removeItem('inventarioRecompensas');
@@ -270,8 +256,8 @@ function Perfil() {
                   tipoMensaje === 'error'
                     ? 'store-message result-box error'
                     : tipoMensaje === 'success'
-                    ? 'store-message result-box success'
-                    : 'store-message'
+                      ? 'store-message result-box success'
+                      : 'store-message'
                 }
               >
                 {mensaje}
