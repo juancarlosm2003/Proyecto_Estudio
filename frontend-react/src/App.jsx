@@ -13,6 +13,7 @@ import Logros from './components/Logros';
 import ProtectedRoute from './components/ProtectedRoute';
 import EmailConfirmado from './components/Bienvenida';
 import { AuthProvider } from './context/AuthContext';
+import ReestablecerContrasena from './components/ReestablecerContrasena';
 
 function App() {
   useEffect(() => {
@@ -30,6 +31,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+
+        <Route path="/olvide-contrasena" element={<ReestablecerContrasena />} />
+        <Route path="/reestablecer-contrasena" element={<ReestablecerContrasena />} />
 
         <Route
           path="/dashboard"
