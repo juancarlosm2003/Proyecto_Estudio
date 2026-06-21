@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Registro() {
   const navigate = useNavigate();
 
+  const { login } = useAuth();
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -86,8 +88,7 @@ function Registro() {
         fechaInicio: new Date().toISOString(),
       };
 
-      localStorage.setItem('usuario', JSON.stringify(sesionUsuario));
-      localStorage.setItem('usuarioId', usuarioBackend.id);
+      login(sesionUsuario);
 
       setNombre('');
       setCorreo('');

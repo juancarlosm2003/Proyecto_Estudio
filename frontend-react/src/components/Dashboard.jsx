@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import API_URL from '../services/api';
+import Tutorial from './Tutorial';
+import { useAuth } from '../context/AuthContext';
 
 const XP_POR_NIVEL = 500;
 
@@ -58,6 +60,7 @@ function formatearFecha(fecha) {
 }
 
 function Dashboard() {
+  const { usuario, actualizarUsuario } = useAuth();
   const [xp, setXp] = useState(0);
   const [monedas, setMonedas] = useState(0);
   const [nombreUsuario, setNombreUsuario] = useState('estudiante');
@@ -67,13 +70,12 @@ function Dashboard() {
   const [errorServidor, setErrorServidor] = useState('');
 
   useEffect(() => {
-    const usuarioLocal = obtenerJSONLocalStorage('usuario', null);
-    const usuarioId = localStorage.getItem('usuarioId') || usuarioLocal?.id;
+    const usuarioId = usuario?.id;
 
-    if (usuarioLocal) {
-      setNombreUsuario(usuarioLocal.nombre || 'estudiante');
-      setXp(usuarioLocal.xp || 0);
-      setMonedas(usuarioLocal.monedas || 0);
+    if (usuario) {
+      setNombreUsuario(usuario.nombre || 'estudiante');
+      setXp(usuario.xp || 0);
+      setMonedas(usuario.monedas || 0);
     }
 
     const cargarProgreso = async () => {
@@ -109,11 +111,10 @@ function Dashboard() {
             xp: usuarioBackend.xp || 0,
             monedas: usuarioBackend.monedas || 0,
             nivel: usuarioBackend.nivel || 1,
-            fechaInicio: usuarioLocal?.fechaInicio || new Date().toISOString(),
+            fechaInicio: new Date().toISOString(),
           };
 
-          localStorage.setItem('usuario', JSON.stringify(sesionActualizada));
-          localStorage.setItem('usuarioId', usuarioBackend.id);
+          actualizarUsuario(sesionActualizada);
         }
 
         const sesiones = datos.sesiones || [];
@@ -134,7 +135,7 @@ function Dashboard() {
     };
 
     cargarProgreso();
-  }, []);
+  }, [usuario?.id]);
 
   const nivel = useMemo(() => {
     return Math.floor(xp / XP_POR_NIVEL) + 1;
@@ -196,9 +197,8 @@ function Dashboard() {
       id: item.id || `quiz-${item.fecha}`,
       icono: 'QZ',
       tipo: 'Quiz completado',
-      descripcion: `${item.clase || 'Sin clase'} - ${item.aciertos || 0}/${
-        item.preguntas || 0
-      } correctas`,
+      descripcion: `${item.clase || 'Sin clase'} - ${item.aciertos || 0}/${item.preguntas || 0
+        } correctas`,
       recompensa: `+${item.xp || 0} XP / +${item.monedas || 0} monedas`,
       fecha: item.fecha,
       timestamp: new Date(item.fecha).getTime() || 0,
@@ -209,9 +209,23 @@ function Dashboard() {
       .slice(0, 4);
   }, [historialSesiones, historialQuizzes]);
 
+  const necesitaTutorial = !cargando && usuario && Number(xp) === 0;
+
   return (
     <div className="page">
       <Navbar />
+
+      {necesitaTutorial && (
+        <Tutorial
+          usuario={usuario}
+          onCompletar={(usuarioActualizado) => {
+            actualizarUsuario(usuarioActualizado);
+            setNombreUsuario(usuarioActualizado.nombre || 'estudiante');
+            setXp(usuarioActualizado.xp || 0);
+            setMonedas(usuarioActualizado.monedas || 0);
+          }}
+        />
+      )}
 
       <main className="main-content">
         <section className="hero-card">

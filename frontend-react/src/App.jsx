@@ -12,6 +12,7 @@ import Perfil from './components/Perfil';
 import Logros from './components/Logros';
 import ProtectedRoute from './components/ProtectedRoute';
 import EmailConfirmado from './components/Bienvenida';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   useEffect(() => {
@@ -25,84 +26,86 @@ function App() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/registro" element={<Registro />} />
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/registro" element={<Registro />} />
 
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/quiz"
-        element={
-          <ProtectedRoute>
-            <Quiz />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/quiz"
+          element={
+            <ProtectedRoute>
+              <Quiz />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/sesion-estudio"
-        element={
-          <ProtectedRoute>
-            <SesionEstudio />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/sesion-estudio"
+          element={
+            <ProtectedRoute>
+              <SesionEstudio />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/recompensas"
-        element={
-          <ProtectedRoute>
-            <Recompensas />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/recompensas"
+          element={
+            <ProtectedRoute>
+              <Recompensas />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/progreso"
-        element={
-          <ProtectedRoute>
-            <Progreso />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/progreso"
+          element={
+            <ProtectedRoute>
+              <Progreso />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/perfil"
-        element={
-          <ProtectedRoute>
-            <Perfil />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/perfil"
+          element={
+            <ProtectedRoute>
+              <Perfil />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/logros"
-        element={
-          <ProtectedRoute>
-            <Logros />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/logros"
+          element={
+            <ProtectedRoute>
+              <Logros />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/email-confirmado"
-        element={
-          <ProtectedRoute>
-            <EmailConfirmado />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/email-confirmado"
+          element={
+            <ProtectedRoute>
+              <EmailConfirmado />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path="*" element={<Login />} />
-    </Routes>
+        <Route path="*" element={<Login />} />
+      </Routes>
+    </AuthProvider>
   );
 }
 

@@ -1,12 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
   const navigate = useNavigate();
+  const { usuario, logout } = useAuth();
 
-  const usuarioRegistrado =
-    JSON.parse(localStorage.getItem('usuarioRegistrado')) || null;
-
-  const nombreUsuario = usuarioRegistrado?.nombre || 'Estudiante';
+  const nombreUsuario = usuario?.nombre || 'Estudiante';
 
   const obtenerIniciales = (nombre) => {
     return nombre
@@ -18,7 +17,7 @@ function Navbar() {
   };
 
   const cerrarSesion = () => {
-    localStorage.removeItem('usuario');
+    logout();
     navigate('/');
   };
 
@@ -72,11 +71,13 @@ function Navbar() {
           <span></span>
           Perfil
         </NavLink>
+
         <NavLink to="/logros">
           <span></span>
           Logros
         </NavLink>
       </nav>
+
       <button className="logout-button" onClick={cerrarSesion}>
         <span></span>
         Cerrar Sesión
