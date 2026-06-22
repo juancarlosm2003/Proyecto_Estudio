@@ -19,9 +19,7 @@ app.get('/', (req, res) => {
   });
 });
 
-/* =========================
-   CLASES
-========================= */
+// Clases
 
 app.get('/api/clases', async (req, res) => {
   const { data, error } = await supabaseAdmin
@@ -42,9 +40,7 @@ app.get('/api/clases', async (req, res) => {
   });
 });
 
-/* =========================
-   RECOMPENSAS
-========================= */
+// Recompensas
 
 app.get('/api/recompensas', async (req, res) => {
   const { data, error } = await supabaseAdmin
@@ -65,9 +61,7 @@ app.get('/api/recompensas', async (req, res) => {
   });
 });
 
-/* =========================
-   USUARIOS
-========================= */
+// Usuarios
 
 app.post('/api/usuarios/registro', async (req, res) => {
   const { nombre, correo, contrasena } = req.body;
@@ -334,9 +328,7 @@ app.put('/api/usuarios/:id/cambiar-contrasena', async (req, res) => {
   });
 });
 
-/* =========================
-   SESIONES DE ESTUDIO
-========================= */
+// Sesiones de estudio
 
 app.post('/api/sesiones', async (req, res) => {
   const { usuario_id, clase, tema, xp, monedas } = req.body;
@@ -415,9 +407,7 @@ app.get('/api/sesiones/:usuarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   QUIZZES
-========================= */
+// Quiz
 
 app.post('/api/quizzes/resultados', async (req, res) => {
   const { usuario_id, clase, preguntas, aciertos, xp, monedas } = req.body;
@@ -497,9 +487,7 @@ app.get('/api/quizzes/resultados/:usuarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   PROGRESO
-========================= */
+// Progreso
 
 app.get('/api/progreso/:usuarioId', async (req, res) => {
   const { usuarioId } = req.params;
@@ -553,9 +541,7 @@ app.get('/api/progreso/:usuarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   INVENTARIO Y CANJE DE RECOMPENSAS
-========================= */
+// Inventario
 
 app.get('/api/inventario/:usuarioId', async (req, res) => {
   const { usuarioId } = req.params;
@@ -578,6 +564,8 @@ app.get('/api/inventario/:usuarioId', async (req, res) => {
     inventario: data,
   });
 });
+
+// Compra de recompensa
 
 app.post('/api/recompensas/canjear', async (req, res) => {
   const { usuario_id, recompensa_id } = req.body;
@@ -701,9 +689,7 @@ app.delete('/api/inventario/:inventarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   SERVIDOR
-========================= */
+// Server
 
 const PORT = process.env.PORT || 3000;
 
