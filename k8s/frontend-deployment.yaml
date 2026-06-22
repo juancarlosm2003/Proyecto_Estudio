@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studyquest-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: studyquest-frontend
+  template:
+    metadata:
+      labels:
+        app: studyquest-frontend
+    spec:
+      containers:
+        - name: studyquest-frontend
+          image: ruiavc/studyquest-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80

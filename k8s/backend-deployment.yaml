@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studyquest-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: studyquest-backend
+  template:
+    metadata:
+      labels:
+        app: studyquest-backend
+    spec:
+      containers:
+        - name: studyquest-backend
+          image: ruiavc/studyquest-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: studyquest-backend-secret

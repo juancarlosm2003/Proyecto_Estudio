@@ -167,6 +167,7 @@ function Login() {
           <p className="register">
             <Link to="/olvide-contrasena">¿Olvidaste tu contraseña?</Link>
           </p>
+
           <p className="register">
             ¿No tienes cuenta? <Link to="/registro">Crear cuenta</Link>
           </p>
