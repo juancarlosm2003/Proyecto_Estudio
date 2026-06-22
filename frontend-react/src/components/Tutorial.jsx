@@ -5,36 +5,64 @@ function Tutorial({ usuario, onCompletar }) {
     const [paso, setPaso] = useState(0);
     const [cargando, setCargando] = useState(false);
     const [error, setError] = useState('');
+    const [respuestaDemo, setRespuestaDemo] = useState('');
+    const [demoRespondida, setDemoRespondida] = useState(false);
+    const [demoCorrecta, setDemoCorrecta] = useState(false);
 
     const pasos = [
         {
+            tipo: 'texto',
             titulo: 'Bienvenido a StudyQuest',
             texto:
-                'Esta aplicación te ayuda a estudiar mediante sesiones, quizzes, experiencia, monedas y recompensas.',
+                'StudyQuest te ayuda a estudiar mediante sesiones guiadas, quizzes, experiencia, monedas, recompensas y progreso.',
         },
         {
-            titulo: 'Gana experiencia',
+            tipo: 'texto',
+            titulo: 'Gana XP y sube de nivel',
             texto:
-                'Cada vez que estudies o completes actividades, ganarás XP. El XP te ayuda a subir de nivel.',
+                'Cada actividad completada puede darte XP. El XP representa tu avance y te permite subir de nivel dentro de la plataforma.',
         },
         {
-            titulo: 'Usa monedas',
+            tipo: 'sesion',
+            titulo: 'Prueba de sesión de estudio',
             texto:
-                'Las monedas se pueden usar para comprar recompensas, ayudas o ventajas dentro de la aplicación.',
+                'En una sesión real eliges una clase, estudias un tema, revisas una explicación y completas una mini pregunta para ganar XP y monedas.',
         },
         {
-            titulo: 'Completa quizzes',
+            tipo: 'quiz',
+            titulo: 'Prueba rápida de quiz',
             texto:
-                'Los quizzes te permiten practicar lo aprendido y ganar recompensas según tu desempeño.',
+                'Ahora responde una pregunta de práctica. Esta respuesta no se guardará en tu historial; solo sirve para mostrarte cómo funcionan los quizzes.',
         },
         {
-            titulo: '¡Comenzemos!',
+            tipo: 'texto',
+            titulo: 'Recompensas y progreso',
             texto:
-                'Completa el tutorial para utilizar StudyQuest',
+                'Las monedas sirven para comprar ayudas en la tienda. Además, puedes revisar tu progreso, historial, logros e inventario desde el panel principal.',
+        },
+        {
+            tipo: 'final',
+            titulo: '¡Comencemos!',
+            texto:
+                'Ya conoces lo básico de StudyQuest. Al completar el tutorial recibirás tus primeros 100 XP y 50 monedas para empezar.',
         },
     ];
 
     const esUltimoPaso = paso === pasos.length - 1;
+    const pasoActual = pasos[paso];
+
+    const responderDemo = (opcion) => {
+        setRespuestaDemo(opcion);
+        setDemoRespondida(true);
+
+        if (opcion === 'Ganar XP y monedas') {
+            setDemoCorrecta(true);
+            setError('');
+        } else {
+            setDemoCorrecta(false);
+            setError('No pasa nada. Intenta de nuevo: las actividades sirven para ganar XP y monedas.');
+        }
+    };
 
     const completarTutorial = async () => {
         if (!usuario?.id) {
@@ -65,16 +93,23 @@ function Tutorial({ usuario, onCompletar }) {
     };
 
     const avanzar = () => {
+        if (pasoActual.tipo === 'quiz' && !demoCorrecta) {
+            setError('Debes responder correctamente la pregunta de práctica para continuar.');
+            return;
+        }
+
         if (esUltimoPaso) {
             completarTutorial();
             return;
         }
 
+        setError('');
         setPaso((pasoActual) => pasoActual + 1);
     };
 
     const retroceder = () => {
         if (paso > 0) {
+            setError('');
             setPaso((pasoActual) => pasoActual - 1);
         }
     };
@@ -84,9 +119,66 @@ function Tutorial({ usuario, onCompletar }) {
             <div className="tutorial-modal">
                 <span className="eyebrow">Tutorial inicial</span>
 
-                <h1>{pasos[paso].titulo}</h1>
+                <h1>{pasoActual.titulo}</h1>
 
-                <p>{pasos[paso].texto}</p>
+                <p>{pasoActual.texto}</p>
+
+                {pasoActual.tipo === 'sesion' && (
+                    <div className="tutorial-demo-card">
+                        <span className="quiz-label">Sesión de ejemplo</span>
+
+                        <h2>Matemáticas - Fracciones</h2>
+
+                        <div className="lesson-block">
+                            <h3>Concepto</h3>
+                            <p>
+                                Una fracción representa una parte de un todo. Por ejemplo, 1/2
+                                significa una de dos partes iguales.
+                            </p>
+                        </div>
+
+                        <div className="reward-item">
+                            <span>Recompensa de ejemplo</span>
+                            <strong>+100 XP / +30 monedas</strong>
+                        </div>
+                    </div>
+                )}
+
+                {pasoActual.tipo === 'quiz' && (
+                    <div className="tutorial-demo-card">
+                        <span className="quiz-label">Pregunta de práctica</span>
+
+                        <h2>¿Qué puedes ganar al completar actividades?</h2>
+
+                        <div className="options-list">
+                            {['Perder nivel', 'Ganar XP y monedas', 'Borrar tu progreso'].map(
+                                (opcion) => (
+                                    <label
+                                        key={opcion}
+                                        className={`option-card ${respuestaDemo === opcion ? 'selected-option' : ''
+                                            }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="respuestaDemo"
+                                            value={opcion}
+                                            checked={respuestaDemo === opcion}
+                                            onChange={() => responderDemo(opcion)}
+                                        />
+
+                                        {opcion}
+                                    </label>
+                                )
+                            )}
+                        </div>
+
+                        {demoRespondida && demoCorrecta && (
+                            <div className="result-box success">
+                                Correcto. Las sesiones y quizzes te ayudan a ganar XP y monedas.
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="tutorial-progress">
                     {pasos.map((_, index) => (
