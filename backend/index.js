@@ -19,9 +19,7 @@ app.get('/', (req, res) => {
   });
 });
 
-/* =========================
-   CLASES
-========================= */
+// Clases
 
 app.get('/api/clases', async (req, res) => {
   const { data, error } = await supabaseAdmin
@@ -42,9 +40,7 @@ app.get('/api/clases', async (req, res) => {
   });
 });
 
-/* =========================
-   RECOMPENSAS
-========================= */
+// Recompensas
 
 app.get('/api/recompensas', async (req, res) => {
   const { data, error } = await supabaseAdmin
@@ -65,9 +61,7 @@ app.get('/api/recompensas', async (req, res) => {
   });
 });
 
-/* =========================
-   USUARIOS
-========================= */
+// Usuarios
 
 app.post('/api/usuarios/registro', async (req, res) => {
   const { nombre, correo, contrasena } = req.body;
@@ -80,7 +74,7 @@ app.post('/api/usuarios/registro', async (req, res) => {
 
   const { data: usuarioExistente, error: errorBusqueda } = await supabaseAdmin
     .from('usuarios')
-    .select('*')
+    .select('id')
     .eq('correo', correo)
     .maybeSingle();
 
@@ -97,18 +91,19 @@ app.post('/api/usuarios/registro', async (req, res) => {
     });
   }
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
-    email: correo,
-    password: contrasena,
-    options: {
-      data: { nombre },
-      emailRedirectTo: 'http://localhost:5173/email-confirmado',
-    },
-  });
+  const { data: authData, error: authError } =
+    await supabaseAdmin.auth.admin.createUser({
+      email: correo,
+      password: contrasena,
+      email_confirm: true,
+      user_metadata: {
+        nombre,
+      },
+    });
 
-   if (authError) {
+  if (authError) {
     return res.status(500).json({
-      mensaje: 'Error al autenticar al usuario',
+      mensaje: 'Error al crear el usuario',
       error: authError.message,
     });
   }
@@ -120,10 +115,9 @@ app.post('/api/usuarios/registro', async (req, res) => {
         id: authData.user.id,
         nombre,
         correo,
-        contrasena,
-        xp: 1200,
-        monedas: 350,
-        nivel: 3,
+        xp: 0,
+        monedas: 0,
+        nivel: 1,
       },
     ])
     .select()
@@ -152,29 +146,42 @@ app.post('/api/usuarios/login', async (req, res) => {
     });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('usuarios')
-    .select('*')
-    .eq('correo', correo)
-    .eq('contrasena', contrasena)
-    .maybeSingle();
+  const { data: authData, error: authError } =
+    await supabaseAdmin.auth.signInWithPassword({
+      email: correo,
+      password: contrasena,
+    });
 
-  if (error) {
-    return res.status(500).json({
-      mensaje: 'Error al iniciar sesión',
-      error: error.message,
+  if (authError || !authData.user) {
+    return res.status(401).json({
+      mensaje: 'Correo o contraseña incorrectos',
+      error: authError?.message,
     });
   }
 
-  if (!data) {
-    return res.status(401).json({
-      mensaje: 'Correo o contraseña incorrectos',
+  const { data: usuario, error: errorUsuario } = await supabaseAdmin
+    .from('usuarios')
+    .select('*')
+    .eq('id', authData.user.id)
+    .maybeSingle();
+
+  if (errorUsuario) {
+    return res.status(500).json({
+      mensaje: 'Error al obtener perfil del usuario',
+      error: errorUsuario.message,
+    });
+  }
+
+  if (!usuario) {
+    return res.status(404).json({
+      mensaje: 'Perfil de usuario no encontrado',
     });
   }
 
   res.json({
     mensaje: 'Inicio de sesión correcto',
-    usuario: data,
+    usuario,
+    session: authData.session,
   });
 });
 
@@ -236,9 +243,92 @@ app.put('/api/usuarios/:id/perfil', async (req, res) => {
   });
 });
 
-/* =========================
-   SESIONES DE ESTUDIO
-========================= */
+app.post('/api/usuarios/:id/tutorial', async (req, res) => {
+  const { id } = req.params;
+
+  const { data: usuarioActual, error: errorUsuario } = await supabaseAdmin
+    .from('usuarios')
+    .select('id, xp, monedas, nivel')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (errorUsuario) {
+    return res.status(500).json({
+      mensaje: 'Error al buscar usuario',
+      error: errorUsuario.message,
+    });
+  }
+
+  if (!usuarioActual) {
+    return res.status(404).json({
+      mensaje: 'Usuario no encontrado',
+    });
+  }
+
+  if (usuarioActual.xp > 0) {
+    return res.status(400).json({
+      mensaje: 'El tutorial ya fue completado',
+    });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('usuarios')
+    .update({
+      xp: 100,
+      monedas: 50,
+      nivel: 1,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({
+      mensaje: 'Error al completar tutorial',
+      error: error.message,
+    });
+  }
+
+  res.json({
+    mensaje: 'Tutorial completado correctamente',
+    usuario: data,
+  });
+});
+
+app.put('/api/usuarios/:id/cambiar-contrasena', async (req, res) => {
+  const { id } = req.params;
+  const { nuevaContrasena } = req.body;
+
+  if (!nuevaContrasena) {
+    return res.status(400).json({
+      mensaje: 'La nueva contraseña es obligatoria',
+    });
+  }
+
+  if (nuevaContrasena.length < 6) {
+    return res.status(400).json({
+      mensaje: 'La contraseña debe tener al menos 6 caracteres',
+    });
+  }
+
+  const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, {
+    password: nuevaContrasena,
+  });
+
+  if (error) {
+    return res.status(500).json({
+      mensaje: 'Error al cambiar contraseña',
+      error: error.message,
+    });
+  }
+
+  res.json({
+    mensaje: 'Contraseña actualizada correctamente',
+    usuarioAuth: data.user,
+  });
+});
+
+// Sesiones de estudio
 
 app.post('/api/sesiones', async (req, res) => {
   const { usuario_id, clase, tema, xp, monedas } = req.body;
@@ -317,9 +407,7 @@ app.get('/api/sesiones/:usuarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   QUIZZES
-========================= */
+// Quiz
 
 app.post('/api/quizzes/resultados', async (req, res) => {
   const { usuario_id, clase, preguntas, aciertos, xp, monedas } = req.body;
@@ -399,9 +487,7 @@ app.get('/api/quizzes/resultados/:usuarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   PROGRESO
-========================= */
+// Progreso
 
 app.get('/api/progreso/:usuarioId', async (req, res) => {
   const { usuarioId } = req.params;
@@ -455,9 +541,7 @@ app.get('/api/progreso/:usuarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   INVENTARIO Y CANJE DE RECOMPENSAS
-========================= */
+// Inventario
 
 app.get('/api/inventario/:usuarioId', async (req, res) => {
   const { usuarioId } = req.params;
@@ -480,6 +564,8 @@ app.get('/api/inventario/:usuarioId', async (req, res) => {
     inventario: data,
   });
 });
+
+// Compra de recompensa
 
 app.post('/api/recompensas/canjear', async (req, res) => {
   const { usuario_id, recompensa_id } = req.body;
@@ -603,9 +689,7 @@ app.delete('/api/inventario/:inventarioId', async (req, res) => {
   });
 });
 
-/* =========================
-   SERVIDOR
-========================= */
+// Server
 
 const PORT = process.env.PORT || 3000;
 

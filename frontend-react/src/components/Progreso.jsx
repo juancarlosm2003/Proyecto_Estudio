@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import contenidosEstudio from '../data/contenidosEstudio';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Progreso() {
+  const { usuario, actualizarUsuario } = useAuth();
   const [xp, setXp] = useState(0);
   const [monedas, setMonedas] = useState(0);
   const [historialSesiones, setHistorialSesiones] = useState([]);
@@ -12,18 +14,9 @@ function Progreso() {
   const [cargando, setCargando] = useState(true);
   const [errorServidor, setErrorServidor] = useState('');
 
-  const obtenerUsuarioActivo = () => {
-    try {
-      return JSON.parse(localStorage.getItem('usuario')) || null;
-    } catch {
-      return null;
-    }
-  };
-
   useEffect(() => {
     const cargarProgreso = async () => {
-      const usuarioActivo = obtenerUsuarioActivo();
-      const usuarioId = localStorage.getItem('usuarioId') || usuarioActivo?.id;
+      const usuarioId = usuario?.id;
 
       if (!usuarioId) {
         setErrorServidor('No se encontró el usuario activo. Inicia sesión nuevamente.');
@@ -56,11 +49,10 @@ function Progreso() {
             xp: usuarioBackend.xp || 0,
             monedas: usuarioBackend.monedas || 0,
             nivel: usuarioBackend.nivel || 1,
-            fechaInicio: usuarioActivo?.fechaInicio || new Date().toISOString(),
+            fechaInicio: new Date().toISOString(),
           };
 
-          localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
-          localStorage.setItem('usuarioId', usuarioBackend.id);
+          actualizarUsuario(usuarioActualizado);
         }
 
         const sesiones = datos.sesiones || [];
@@ -81,7 +73,7 @@ function Progreso() {
     };
 
     cargarProgreso();
-  }, []);
+  }, [usuario?.id]);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'Sin fecha';

@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import contenidosEstudio from '../data/contenidosEstudio';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function SesionEstudio() {
+  const { usuario, cargarUsuario } = useAuth();
   const DURACION_INICIAL = 25 * 60;
 
   const [claseSeleccionada, setClaseSeleccionada] = useState(0);
@@ -23,14 +25,6 @@ function SesionEstudio() {
 
   const claseActual = contenidosEstudio[claseSeleccionada];
   const temaActual = claseActual.temas[temaSeleccionado];
-
-  const obtenerUsuarioActivo = () => {
-    try {
-      return JSON.parse(localStorage.getItem('usuario')) || null;
-    } catch {
-      return null;
-    }
-  };
 
   useEffect(() => {
     setTemaSeleccionado(0);
@@ -131,8 +125,7 @@ function SesionEstudio() {
 
     if (sesionCompletada || guardandoSesion) return;
 
-    const usuarioActivo = obtenerUsuarioActivo();
-    const usuarioId = localStorage.getItem('usuarioId') || usuarioActivo?.id;
+    const usuarioId = usuario?.id;
 
     if (!usuarioId) {
       setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
@@ -180,15 +173,7 @@ function SesionEstudio() {
         JSON.stringify([nuevaSesion, ...historialActual])
       );
 
-      if (usuarioActivo) {
-        const usuarioActualizado = {
-          ...usuarioActivo,
-          xp: (usuarioActivo.xp || 0) + xpGanado,
-          monedas: (usuarioActivo.monedas || 0) + monedasGanadas,
-        };
-
-        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
-      }
+      await cargarUsuario();
 
       setSesionCompletada(true);
       setSesionIniciada(false);
@@ -278,10 +263,10 @@ function SesionEstudio() {
               {sesionCompletada
                 ? 'Sesión completada'
                 : sesionIniciada
-                ? sesionPausada
-                  ? 'Sesión pausada'
-                  : 'Sesión en progreso'
-                : 'Pendiente de iniciar'}
+                  ? sesionPausada
+                    ? 'Sesión pausada'
+                    : 'Sesión en progreso'
+                  : 'Pendiente de iniciar'}
             </span>
 
             <h2>
@@ -361,8 +346,8 @@ function SesionEstudio() {
                   tipoMensaje === 'success'
                     ? 'result-box success'
                     : tipoMensaje === 'error'
-                    ? 'result-box error'
-                    : 'result-box'
+                      ? 'result-box error'
+                      : 'result-box'
                 }
               >
                 {mensaje}

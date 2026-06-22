@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Login() {
   const navigate = useNavigate();
 
+  const { login } = useAuth();
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
@@ -62,8 +64,7 @@ function Login() {
         fechaInicio: new Date().toISOString(),
       };
 
-      localStorage.setItem('usuario', JSON.stringify(sesionUsuario));
-      localStorage.setItem('usuarioId', usuarioBackend.id);
+      login(sesionUsuario);
 
       setCorreo('');
       setContrasena('');
@@ -163,6 +164,9 @@ function Login() {
             </button>
           </form>
 
+          <p className="register">
+            <Link to="/olvide-contrasena">¿Olvidaste tu contraseña?</Link>
+          </p>
           <p className="register">
             ¿No tienes cuenta? <Link to="/registro">Crear cuenta</Link>
           </p>

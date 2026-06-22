@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import Navbar from './Navbar';
 import contenidosEstudio from '../data/contenidosEstudio';
 import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Quiz() {
+  const { usuario, cargarUsuario } = useAuth();
   const [claseSeleccionada, setClaseSeleccionada] = useState(0);
   const [indicePregunta, setIndicePregunta] = useState(0);
   const [respuesta, setRespuesta] = useState('');
@@ -31,22 +33,9 @@ function Quiz() {
 
   const preguntaActual = preguntas[indicePregunta];
 
-  const obtenerUsuarioActivo = () => {
-    try {
-      return JSON.parse(localStorage.getItem('usuario')) || null;
-    } catch {
-      return null;
-    }
-  };
-
-  const obtenerUsuarioId = () => {
-    const usuarioActivo = obtenerUsuarioActivo();
-    return localStorage.getItem('usuarioId') || usuarioActivo?.id;
-  };
-
   useEffect(() => {
     const cargarInventario = async () => {
-      const usuarioId = obtenerUsuarioId();
+      const usuarioId = usuario?.id;
 
       if (!usuarioId) {
         setMensajeAyuda('No se encontró el usuario activo. Inicia sesión nuevamente.');
@@ -76,7 +65,7 @@ function Quiz() {
     };
 
     cargarInventario();
-  }, []);
+  }, [usuario?.id]);
 
   useEffect(() => {
     reiniciarQuiz();
@@ -223,8 +212,7 @@ function Quiz() {
   const finalizarQuiz = async () => {
     if (guardandoResultado || quizFinalizado) return;
 
-    const usuarioActivo = obtenerUsuarioActivo();
-    const usuarioId = obtenerUsuarioId();
+    const usuarioId = usuario?.id;
 
     if (!usuarioId) {
       setMensaje('No se encontró el usuario activo. Inicia sesión nuevamente.');
@@ -272,15 +260,7 @@ function Quiz() {
         JSON.stringify([nuevoQuiz, ...historialActual])
       );
 
-      if (usuarioActivo) {
-        const usuarioActualizado = {
-          ...usuarioActivo,
-          xp: (usuarioActivo.xp || 0) + xpGanado,
-          monedas: (usuarioActivo.monedas || 0) + monedasGanadas,
-        };
-
-        localStorage.setItem('usuario', JSON.stringify(usuarioActualizado));
-      }
+      await cargarUsuario();
 
       setQuizFinalizado(true);
       setMensaje(
@@ -369,9 +349,8 @@ function Quiz() {
                   {opcionesVisibles.map((opcion) => (
                     <label
                       key={opcion}
-                      className={`option-card ${
-                        respuesta === opcion ? 'selected-option' : ''
-                      }`}
+                      className={`option-card ${respuesta === opcion ? 'selected-option' : ''
+                        }`}
                     >
                       <input
                         type="radio"
@@ -400,8 +379,8 @@ function Quiz() {
                     {guardandoResultado
                       ? 'Guardando...'
                       : indicePregunta + 1 === preguntas.length
-                      ? 'Finalizar quiz'
-                      : 'Siguiente pregunta'}
+                        ? 'Finalizar quiz'
+                        : 'Siguiente pregunta'}
                   </button>
                 )}
 

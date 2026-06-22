@@ -1,9 +1,14 @@
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function ProtectedRoute({ children }) {
-  const usuarioActivo = localStorage.getItem('usuario');
+  const { usuario, cargandoUsuario } = useAuth();
 
-  if (!usuarioActivo) {
+  if (cargandoUsuario) {
+    return <p>Cargando usuario...</p>;
+  }
+
+  if (!usuario) {
     return <Navigate to="/" replace />;
   }
 

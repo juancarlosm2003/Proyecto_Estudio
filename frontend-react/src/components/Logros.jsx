@@ -1,32 +1,83 @@
 import { useEffect, useState } from 'react';
 import Navbar from './Navbar';
+import API_URL from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Logros() {
-  const [xp, setXp] = useState(1200);
-  const [monedas, setMonedas] = useState(350);
+  const { usuario, actualizarUsuario } = useAuth();
+  const [xp, setXp] = useState(0);
+  const [monedas, setMonedas] = useState(0);
+  const [cargando, setCargando] = useState(true);
+  const [errorServidor, setErrorServidor] = useState('');
   const [historialSesiones, setHistorialSesiones] = useState([]);
   const [historialQuizzes, setHistorialQuizzes] = useState([]);
   const [inventario, setInventario] = useState([]);
 
   useEffect(() => {
-    const xpGuardado = Number(localStorage.getItem('xp')) || 1200;
-    const monedasGuardadas = Number(localStorage.getItem('monedas')) || 350;
+    const cargarLogros = async () => {
+      const usuarioId = usuario?.id;
 
-    const sesionesGuardadas =
-      JSON.parse(localStorage.getItem('historialSesiones')) || [];
+      if (!usuarioId) {
+        setErrorServidor('No se encontró el usuario activo. Inicia sesión nuevamente.');
+        setCargando(false);
+        return;
+      }
 
-    const quizzesGuardados =
-      JSON.parse(localStorage.getItem('historialQuizzes')) || [];
+      try {
+        setCargando(true);
+        setErrorServidor('');
 
-    const inventarioGuardado =
-      JSON.parse(localStorage.getItem('inventarioRecompensas')) || [];
+        const [respuestaProgreso, respuestaInventario] = await Promise.all([
+          fetch(`${API_URL}/api/progreso/${usuarioId}`),
+          fetch(`${API_URL}/api/inventario/${usuarioId}`),
+        ]);
 
-    setXp(xpGuardado);
-    setMonedas(monedasGuardadas);
-    setHistorialSesiones(sesionesGuardadas);
-    setHistorialQuizzes(quizzesGuardados);
-    setInventario(inventarioGuardado);
-  }, []);
+        const datosProgreso = await respuestaProgreso.json();
+        const datosInventario = await respuestaInventario.json();
+
+        if (!respuestaProgreso.ok) {
+          setErrorServidor(datosProgreso.mensaje || 'No se pudo cargar el progreso.');
+          return;
+        }
+
+        if (!respuestaInventario.ok) {
+          setErrorServidor(datosInventario.mensaje || 'No se pudo cargar el inventario.');
+          return;
+        }
+
+        const usuarioBackend = datosProgreso.usuario;
+
+        if (usuarioBackend) {
+          setXp(usuarioBackend.xp || 0);
+          setMonedas(usuarioBackend.monedas || 0);
+
+          const usuarioActualizado = {
+            id: usuarioBackend.id,
+            nombre: usuarioBackend.nombre || 'Estudiante',
+            correo: usuarioBackend.correo,
+            xp: usuarioBackend.xp || 0,
+            monedas: usuarioBackend.monedas || 0,
+            nivel: usuarioBackend.nivel || 1,
+            fechaInicio: new Date().toISOString(),
+          };
+
+          actualizarUsuario(usuarioActualizado);
+        }
+
+        setHistorialSesiones(datosProgreso.sesiones || []);
+        setHistorialQuizzes(datosProgreso.quizzes || []);
+        setInventario(datosInventario.inventario || []);
+      } catch {
+        setErrorServidor(
+          'No se pudo conectar con el servidor. Revisa que el backend esté encendido.'
+        );
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarLogros();
+  }, [usuario?.id]);
 
   const xpPorNivel = 500;
   const nivel = Math.floor(xp / xpPorNivel) + 1;
@@ -153,6 +204,13 @@ function Logros() {
               Desbloquea reconocimientos según tus sesiones, quizzes, nivel y
               rendimiento académico.
             </p>
+            {cargando && <p>Cargando logros...</p>}
+
+            {errorServidor && (
+              <div className="login-error" role="alert">
+                {errorServidor}
+              </div>
+            )}
           </div>
 
           <div className="achievements-resume">
